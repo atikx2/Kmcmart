@@ -40,11 +40,25 @@ function isItem(e: NavEntry): e is NavItem {
   return "label" in e;
 }
 
+/** Dashboard only matches exactly; every other item also matches its sub-routes. */
+function isActiveHref(pathname: string, href?: string): boolean {
+  if (!href) return false;
+  if (href === "/admin") return pathname === "/admin";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function pageTitle(pathname: string): string {
+  if (pathname === "/admin") return "Dashboard";
+  if (/^\/admin\/orders\/.+/.test(pathname)) return "Order Details";
+  if (pathname.startsWith("/admin/orders")) return "Order Management";
+  return "Admin Panel";
+}
+
 const NAV: NavEntry[] = [
   { section: "Main" },
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { section: "Manage" },
-  { label: "Orders", icon: ShoppingCart, soon: true },
+  { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { label: "Products", icon: Package, soon: true },
   { label: "Categories", icon: Shapes, soon: true },
   { label: "Banners", icon: Images, soon: true },
@@ -262,8 +276,7 @@ export default function AdminShell({
     window.location.href = "/admin/login";
   };
 
-  const title =
-    pathname === "/admin" ? "Dashboard" : "Admin Panel";
+  const title = pageTitle(pathname);
 
   const navContent = (isCollapsed: boolean) => (
     <nav className="flex-1 overflow-y-auto no-scrollbar py-3">
@@ -278,7 +291,7 @@ export default function AdminShell({
           );
         }
         const Icon = entry.icon;
-        const active = entry.href ? pathname === entry.href : false;
+        const active = isActiveHref(pathname, entry.href);
         const badge = entry.label === "Orders" ? pendingOrders : entry.badge;
 
         const inner = (

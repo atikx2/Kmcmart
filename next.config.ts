@@ -10,11 +10,12 @@ const nextConfig: NextConfig = {
     // dev lets the browser fetch them directly. Production (Netlify) keeps the
     // optimizer enabled.
     unoptimized: process.env.NODE_ENV === "development",
+    // Product / category / banner images are entered as URLs from the admin
+    // panel, so the host is not known ahead of time. Allow any https host
+    // (http stays blocked) instead of 500-ing on an unconfigured hostname.
     remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "images.pexels.com",
-      },
+      { protocol: "https", hostname: "images.pexels.com" },
+      { protocol: "https", hostname: "**" },
     ],
   },
 };
