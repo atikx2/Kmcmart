@@ -25,18 +25,63 @@ export const ORDER_STATUS_CHIP: Record<string, string> = {
   cancelled: "bg-rose-50 text-rose-500 border border-rose-100",
 };
 
-export const ORDERS_PAGE_SIZE = 12;
+export const ORDERS_PAGE_SIZE = 20;
+export const ORDERS_PAGE_SIZES = [20, 50, 100] as const;
+
+/** Delivery-success score for a phone number (stand-in until a courier fraud API is wired). */
+export type FraudScore = {
+  /** 0-100 success rate, or null when the customer has no finished orders yet. */
+  percent: number | null;
+  delivered: number;
+  cancelled: number;
+  totalOrders: number;
+  label: "Trusted" | "Average" | "Risky" | "New";
+  tone: "emerald" | "amber" | "rose" | "slate";
+};
+
+export function fraudScore(delivered: number, cancelled: number, totalOrders: number): FraudScore {
+  const finished = delivered + cancelled;
+  if (finished === 0) {
+    return { percent: null, delivered, cancelled, totalOrders, label: "New", tone: "slate" };
+  }
+  const percent = Math.round((delivered / finished) * 100);
+  if (percent >= 80) return { percent, delivered, cancelled, totalOrders, label: "Trusted", tone: "emerald" };
+  if (percent >= 50) return { percent, delivered, cancelled, totalOrders, label: "Average", tone: "amber" };
+  return { percent, delivered, cancelled, totalOrders, label: "Risky", tone: "rose" };
+}
+
+export const FRAUD_BAR: Record<FraudScore["tone"], string> = {
+  emerald: "bg-gradient-to-r from-emerald-500 to-green-400",
+  amber: "bg-gradient-to-r from-amber-500 to-yellow-400",
+  rose: "bg-gradient-to-r from-rose-500 to-red-400",
+  slate: "bg-gray-300",
+};
+
+export const FRAUD_TEXT: Record<FraudScore["tone"], string> = {
+  emerald: "text-emerald-600",
+  amber: "text-amber-600",
+  rose: "text-rose-600",
+  slate: "text-gray-400",
+};
+
+export type AdminOrderItemPreview = { name: string; image: string; qty: number; price: number };
 
 export type AdminOrderRow = {
   id: number;
   code: string;
   customerName: string;
   phone: string;
+  address: string;
+  customerIp: string | null;
   itemsCount: number;
+  items: AdminOrderItemPreview[];
+  subtotal: number;
+  deliveryCharge: number;
   total: number;
   deliveryAreaName: string;
   status: string;
   date: string;
+  fraud: FraudScore;
 };
 
 export type OrderCounts = {
@@ -62,6 +107,7 @@ export type AdminOrderDetail = {
   customerName: string;
   phone: string;
   address: string;
+  customerIp: string | null;
   deliveryAreaName: string;
   deliveryCharge: number;
   subtotal: number;
@@ -69,6 +115,20 @@ export type AdminOrderDetail = {
   status: string;
   items: OrderItem[];
   placedAt: string;
+  fraud: FraudScore;
+};
+
+/** Fields the admin may edit on an order. */
+export type OrderEditableFields = {
+  customerName?: string;
+  phone?: string;
+  address?: string;
+  deliveryAreaName?: string;
+  deliveryCharge?: number;
+  subtotal?: number;
+  total?: number;
+  status?: OrderStatus;
+  items?: OrderItem[];
 };
 
 /* ---------------- date helpers (the store runs on Asia/Dhaka time) ---------------- */

@@ -7,6 +7,18 @@ import { getSessionCustomer } from "@/lib/auth";
 
 type IncomingItem = { id: number; qty: number };
 
+/** Best-effort visitor IP (Netlify → CDN → proxy → direct). */
+function clientIp(req: NextRequest): string | null {
+  const h = req.headers;
+  const candidate =
+    h.get("x-nf-client-connection-ip") ||
+    h.get("cf-connecting-ip") ||
+    h.get("x-real-ip") ||
+    h.get("x-forwarded-for")?.split(",")[0];
+  const ip = candidate?.trim();
+  return ip && ip.length <= 64 ? ip : null;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -79,6 +91,7 @@ export async function POST(req: NextRequest) {
         subtotal,
         total,
         items: orderItems,
+        customerIp: clientIp(req),
       })
       .returning({ id: orders.id });
 

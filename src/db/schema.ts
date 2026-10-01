@@ -126,6 +126,8 @@ export const orders = pgTable("orders", {
   total: integer("total").notNull().default(0),
   items: jsonb("items").$type<OrderItem[]>().notNull().default([]),
   status: text("status").notNull().default("pending"),
+  /** Visitor IP captured at checkout — used by the admin fraud panel. */
+  customerIp: text("customer_ip"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

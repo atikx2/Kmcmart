@@ -16,12 +16,14 @@ export async function generateMetadata({
 
 export default async function AdminOrderDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ code: string }>;
+  searchParams: Promise<{ edit?: string }>;
 }) {
-  const { code } = await params;
+  const [{ code }, { edit }] = await Promise.all([params, searchParams]);
   const order = await getAdminOrderByCode(code);
   if (!order) notFound();
 
-  return <OrderDetailClient order={order} />;
+  return <OrderDetailClient order={order} startInEdit={edit === "1"} />;
 }

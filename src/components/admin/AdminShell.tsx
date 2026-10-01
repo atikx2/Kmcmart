@@ -25,6 +25,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { NAV_COOKIE, NAV_COOKIE_MAX_AGE } from "@/lib/admin-ui";
 
 type NavItem = {
   href?: string;
@@ -226,34 +227,36 @@ export default function AdminShell({
   pendingOrders,
   logo,
   siteName,
+  defaultCollapsed = false,
   children,
 }: {
   email: string;
   pendingOrders: number;
   logo: string;
   siteName: string;
+  /** Read from the `kmc_admin_nav` cookie on the server so the sidebar renders
+      in its remembered state on the very first paint (no expand→collapse flash). */
+  defaultCollapsed?: boolean;
   children: ReactNode;
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const [mobileNav, setMobileNav] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [modal, setModal] = useState<"email" | "password" | null>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
-  /* persist collapse state */
-  useEffect(() => {
-    try {
-      if (localStorage.getItem("kmc_admin_nav") === "1") setCollapsed(true);
-    } catch { /* ignore */ }
-  }, []);
+  /* Persist the collapse state in a cookie so the server can render the same
+     state next time. Collapsed still shows every icon — only the labels hide. */
   const toggleCollapse = () => {
     setCollapsed((c) => {
+      const next = !c;
       try {
-        localStorage.setItem("kmc_admin_nav", c ? "0" : "1");
+        document.cookie = `${NAV_COOKIE}=${next ? "1" : "0"}; path=/; max-age=${NAV_COOKIE_MAX_AGE}; samesite=lax`;
+        localStorage.setItem(NAV_COOKIE, next ? "1" : "0");
       } catch { /* ignore */ }
-      return !c;
+      return next;
     });
   };
 

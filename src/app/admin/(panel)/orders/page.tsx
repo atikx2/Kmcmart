@@ -13,5 +13,5 @@ export default async function AdminOrdersPage() {
     limit: ORDERS_PAGE_SIZE,
   });
 
-  return <OrdersClient initial={initial} pageSize={ORDERS_PAGE_SIZE} />;
+  return <OrdersClient initial={initial} />;
 }

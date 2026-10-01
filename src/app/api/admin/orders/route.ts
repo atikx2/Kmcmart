@@ -14,6 +14,7 @@ export async function GET(req: NextRequest) {
       status: sp.get("status"),
       q: sp.get("q"),
       offset: parseInt(sp.get("offset") || "0", 10) || 0,
+      /* clamped to 1..100 inside listAdminOrders() */
       limit: parseInt(sp.get("limit") || String(ORDERS_PAGE_SIZE), 10) || ORDERS_PAGE_SIZE,
     });
     return Response.json(data);
