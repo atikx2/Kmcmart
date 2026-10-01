@@ -269,7 +269,7 @@ export default function OrderDetailClient({ order }: { order: AdminOrderDetail }
         )}
       </div>
 
-      <div className="grid lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* ---------- items ---------- */}
         <div className="lg:col-span-3 bg-white rounded-3xl border border-gray-100 shadow-[0_4px_18px_rgba(17,18,28,0.05)] overflow-hidden">
           <div className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-gray-100">

@@ -48,9 +48,9 @@ export default function Footer({ settings, menus }: { settings: Settings; menus:
   return (
     <footer className="bg-black text-white">
       <div className="h-1 grad-bg" />
-      <div className="max-w-7xl mx-auto px-4 lg:px-6 py-12 md:py-16 grid gap-10 md:grid-cols-[1.3fr_1fr_1.2fr]">
+      <div className="max-w-7xl mx-auto px-4 lg:px-6 py-12 md:py-16 grid grid-cols-1 gap-10 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1.2fr)]">
         {/* brand */}
-        <div>
+        <div className="min-w-0">
           <Link href="/">
             <Image
               src={settings.logoFooter}
@@ -78,7 +78,7 @@ export default function Footer({ settings, menus }: { settings: Settings; menus:
         </div>
 
         {/* quick links */}
-        <div>
+        <div className="min-w-0">
           <h4 className="font-display font-extrabold text-base">Quick Links</h4>
           <span className="block mt-2 h-[3px] w-9 rounded-full grad-bg" />
           <ul className="mt-5 grid grid-cols-2 md:grid-cols-1 gap-y-2.5 gap-x-4">
@@ -97,7 +97,7 @@ export default function Footer({ settings, menus }: { settings: Settings; menus:
         </div>
 
         {/* contact */}
-        <div>
+        <div className="min-w-0">
           <h4 className="font-display font-extrabold text-base">Contact Us</h4>
           <span className="block mt-2 h-[3px] w-9 rounded-full grad-bg" />
           <ul className="mt-5 space-y-3.5 text-sm">
@@ -109,7 +109,7 @@ export default function Footer({ settings, menus }: { settings: Settings; menus:
                 <span className="w-9 h-9 rounded-xl grad-bg grid place-items-center shrink-0">
                   <Phone size={15} />
                 </span>
-                {settings.phone}
+                <span className="min-w-0 break-words">{settings.phone}</span>
               </a>
             </li>
             <li>
@@ -117,14 +117,14 @@ export default function Footer({ settings, menus }: { settings: Settings; menus:
                 <span className="w-9 h-9 rounded-xl grad-bg grid place-items-center shrink-0">
                   <Mail size={15} />
                 </span>
-                {settings.email}
+                <span className="min-w-0 break-all">{settings.email}</span>
               </a>
             </li>
             <li className="flex items-center gap-3 text-gray-300">
               <span className="w-9 h-9 rounded-xl grad-bg grid place-items-center shrink-0">
                 <MapPin size={15} />
               </span>
-              {settings.address}
+              <span className="min-w-0 break-words">{settings.address}</span>
             </li>
           </ul>
         </div>

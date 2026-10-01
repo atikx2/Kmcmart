@@ -276,6 +276,7 @@ export default function Header({ settings, menus }: { settings: Settings; menus:
   }, [pathname]);
 
   return (
+    <>
     <header
       className={`sticky top-0 z-[60] bg-white/95 backdrop-blur-md transition-shadow ${
         scrolled ? "shadow-[0_6px_24px_rgba(17,18,28,0.08)]" : ""
@@ -389,7 +390,13 @@ export default function Header({ settings, menus }: { settings: Settings; menus:
         </div>
       </nav>
 
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} settings={settings} menus={menus} />
     </header>
+
+    {/* NOTE: the drawer MUST live outside <header>. The header uses
+        `backdrop-blur-md` (backdrop-filter), which makes it the containing
+        block for position:fixed descendants — inside it, `fixed inset-0`
+        collapses to the 56px header strip and the menu is invisible. */}
+    <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} settings={settings} menus={menus} />
+    </>
   );
 }

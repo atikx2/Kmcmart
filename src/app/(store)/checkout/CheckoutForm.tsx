@@ -147,7 +147,7 @@ export default function CheckoutForm({
 
   if (!ready) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-10 grid lg:grid-cols-5 gap-6">
+      <div className="max-w-6xl mx-auto px-4 py-10 grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-3 shimmer rounded-3xl h-[420px]" />
         <div className="lg:col-span-2 shimmer rounded-3xl h-[320px]" />
       </div>
@@ -183,9 +183,9 @@ export default function CheckoutForm({
         Fill up the form below — we will call to confirm your order
       </p>
 
-      <div className="grid lg:grid-cols-5 gap-5 md:gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 md:gap-6 items-start">
         {/* form */}
-        <form id="checkout-form" onSubmit={submit} className="lg:col-span-3 bg-white rounded-3xl border border-gray-100 shadow-[0_8px_30px_rgba(17,18,28,0.05)] p-5 md:p-7">
+        <form id="checkout-form" onSubmit={submit} className="min-w-0 lg:col-span-3 bg-white rounded-3xl border border-gray-100 shadow-[0_8px_30px_rgba(17,18,28,0.05)] p-5 md:p-7">
           <h2 className="font-display font-extrabold text-base md:text-lg flex items-center gap-2.5 mb-5">
             <span className="grad-bg text-white rounded-xl p-2">
               <ClipboardList size={15} />
@@ -252,7 +252,7 @@ export default function CheckoutForm({
         </form>
 
         {/* summary */}
-        <aside className="lg:col-span-2 bg-white rounded-3xl border border-gray-100 shadow-[0_8px_30px_rgba(17,18,28,0.05)] p-5 md:p-6 lg:sticky lg:top-24">
+        <aside className="min-w-0 lg:col-span-2 bg-white rounded-3xl border border-gray-100 shadow-[0_8px_30px_rgba(17,18,28,0.05)] p-5 md:p-6 lg:sticky lg:top-24">
           <h2 className="font-display font-extrabold text-base md:text-lg flex items-center gap-2.5 mb-4">
             <span className="grad-bg text-white rounded-xl p-2">
               <ShoppingBag size={15} />

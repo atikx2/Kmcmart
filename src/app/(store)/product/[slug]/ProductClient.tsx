@@ -41,7 +41,7 @@ export default function ProductClient({
   const price = effectivePrice(product.regularPrice, product.sellPrice);
 
   return (
-    <div className="grid md:grid-cols-2 gap-6 md:gap-10 items-start">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 items-start">
       {/* gallery */}
       <div>
         <div className="relative rounded-3xl overflow-hidden bg-white border border-gray-100 shadow-[0_14px_50px_rgba(17,18,28,0.1)] h-[300px] sm:h-[360px] md:h-auto md:aspect-[4/4.7]">

@@ -82,7 +82,7 @@ export default async function ProductPage({
         </h2>
         <span className="block mt-3 h-[3px] w-12 rounded-full grad-bg" />
         <p className="mt-4 text-sm md:text-[15px] text-gray-600 leading-relaxed">{product.description}</p>
-        <ul className="mt-5 grid sm:grid-cols-2 gap-2.5 text-[13px] text-gray-600">
+        <ul className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-[13px] text-gray-600">
           {[
             "100% authentic & brand new",
             "Cash on delivery available",
