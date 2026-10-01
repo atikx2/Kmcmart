@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Allow the sandbox/preview hostnames to hit the dev server's /_next assets.
+  // Has no effect on production builds.
+  allowedDevOrigins: ["*.e2b.app", "*.e2b.dev", "localhost", "127.0.0.1"],
   images: {
     // In local/sandbox dev the server cannot always reach images.pexels.com,
     // which breaks the Next.js image optimizer. Serving images unoptimized in
