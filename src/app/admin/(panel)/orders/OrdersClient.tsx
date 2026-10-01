@@ -324,6 +324,7 @@ export default function OrdersClient({ initial }: { initial: AdminOrderList }) {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Delete failed");
       showToast("ok", `Order #${toDelete.code} deleted`);
+      setSelected((ids) => ids.filter((i) => i !== toDelete.id));
       setToDelete(null);
       await refresh();
       router.refresh();
@@ -353,6 +354,7 @@ export default function OrdersClient({ initial }: { initial: AdminOrderList }) {
           : `${json.affected} order(s) → ${ORDER_STATUS_LABEL[bulkStatus ?? ""] ?? ""}`
       );
       setBulkDelete(false);
+      if (action === "delete") setSelected([]);
       await refresh();
       router.refresh();
     } catch (e) {
