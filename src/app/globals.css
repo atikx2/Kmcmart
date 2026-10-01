@@ -15,6 +15,9 @@ body {
   background-color: #fafafc;
   color: #23252d;
   -webkit-font-smoothing: antialiased;
+  /* `clip` (not `hidden`) — kills sideways scroll from off-canvas drawers
+     while keeping position:sticky working for the header. */
+  overflow-x: clip;
 }
 
 .font-display {

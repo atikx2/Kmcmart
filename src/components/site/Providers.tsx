@@ -108,7 +108,7 @@ export default function Providers({ children }: { children: ReactNode }) {
       {children}
       {/* cart drawer */}
       <div
-        className={`fixed inset-0 z-[90] transition ${open ? "pointer-events-auto" : "pointer-events-none"}`}
+        className={`fixed inset-0 z-[90] overflow-hidden transition ${open ? "pointer-events-auto" : "pointer-events-none"}`}
         aria-hidden={!open}
       >
         <div

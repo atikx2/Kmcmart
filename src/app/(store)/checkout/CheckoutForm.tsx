@@ -309,9 +309,11 @@ export default function CheckoutForm({
 
       {/* mobile sticky bar — summary sits above the button */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/97 backdrop-blur border-t border-gray-100 shadow-[0_-8px_30px_rgba(17,18,28,0.1)] px-4 py-3">
-        <div className="flex items-center justify-between text-[11px] font-bold text-gray-400 mb-1.5">
-          <span>{items.reduce((a, i) => a + i.qty, 0)} items • {area?.name ?? "Select area"}</span>
-          <span>
+        <div className="flex items-center justify-between gap-3 text-[11px] font-bold text-gray-400 mb-1.5">
+          <span className="min-w-0 truncate">
+            {items.reduce((a, i) => a + i.qty, 0)} items • {area?.name ?? "Select area"}
+          </span>
+          <span className="shrink-0 whitespace-nowrap">
             Total payable: <span className="grad-text font-display font-extrabold text-base">{taka(total)}</span>
           </span>
         </div>

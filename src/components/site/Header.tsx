@@ -164,7 +164,11 @@ function MobileMenu({
   }, [pathname]);
 
   return (
-    <div className={`fixed inset-0 z-[95] lg:hidden ${open ? "pointer-events-auto" : "pointer-events-none"}`}>
+    <div
+      className={`fixed inset-0 z-[95] overflow-hidden lg:hidden ${
+        open ? "pointer-events-auto" : "pointer-events-none"
+      }`}
+    >
       <div
         className={`absolute inset-0 bg-black/50 backdrop-blur-[2px] transition-opacity duration-300 ${
           open ? "opacity-100" : "opacity-0"
