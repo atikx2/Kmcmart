@@ -1,12 +1,29 @@
 import type { Metadata, Viewport } from "next";
-import { Manrope, Space_Grotesk } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { getSettings } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
-const manrope = Manrope({ subsets: ["latin"], variable: "--font-sans" });
-const grotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-display" });
+/* Self-hosted fonts (same families as before: Manrope + Space Grotesk).
+   Kept local so builds never depend on fonts.googleapis.com being reachable. */
+const manrope = localFont({
+  src: "../fonts/Manrope-Variable.woff2",
+  weight: "200 800",
+  style: "normal",
+  display: "swap",
+  variable: "--font-sans",
+  fallback: ["system-ui", "Segoe UI", "Arial", "sans-serif"],
+});
+
+const grotesk = localFont({
+  src: "../fonts/SpaceGrotesk-Variable.woff2",
+  weight: "300 700",
+  style: "normal",
+  display: "swap",
+  variable: "--font-display",
+  fallback: ["system-ui", "Segoe UI", "Arial", "sans-serif"],
+});
 
 export const viewport: Viewport = {
   width: "device-width",
