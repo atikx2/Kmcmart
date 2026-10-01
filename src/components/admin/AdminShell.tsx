@@ -364,37 +364,68 @@ export default function AdminShell({
         </div>
       </aside>
 
-      {/* mobile drawer */}
-      <div className={`fixed inset-0 z-[110] lg:hidden ${mobileNav ? "" : "pointer-events-none"}`}>
+      {/* mobile: an always-visible icon rail that slides open into a full panel.
+          Collapsed only hides the labels — the icons never disappear. */}
+      <div className="lg:hidden">
         <div
-          className={`absolute inset-0 bg-black/50 backdrop-blur-[2px] transition-opacity duration-300 ${
-            mobileNav ? "opacity-100" : "opacity-0"
+          className={`fixed inset-0 z-[105] bg-black/50 backdrop-blur-[2px] transition-opacity duration-300 ${
+            mobileNav ? "opacity-100" : "opacity-0 pointer-events-none"
           }`}
           onClick={() => setMobileNav(false)}
         />
         <aside
-          className={`absolute left-0 top-0 h-full w-[268px] bg-white shadow-2xl flex flex-col transition-transform duration-300 ${
-            mobileNav ? "translate-x-0" : "-translate-x-full"
+          className={`fixed left-0 top-0 h-screen z-[110] bg-white border-r border-gray-100 flex flex-col transition-[width] duration-300 ease-out ${
+            mobileNav ? "w-[264px] shadow-[0_0_60px_rgba(17,18,28,0.25)]" : "w-[64px]"
           }`}
         >
-          <div className="flex items-center justify-between h-[72px] px-5 border-b border-gray-100">
-            <Image src={logo} alt={siteName} width={150} height={36} className="h-8 w-auto" />
-            <button onClick={() => setMobileNav(false)} className="w-9 h-9 rounded-full bg-gray-100 grid place-items-center" aria-label="Close menu">
-              <X size={16} />
+          <div className={`flex items-center h-[72px] border-b border-gray-100 shrink-0 ${mobileNav ? "px-4 justify-between" : "justify-center"}`}>
+            {mobileNav ? (
+              <>
+                <Image src={logo} alt={siteName} width={150} height={36} className="h-8 w-auto" />
+                <button
+                  onClick={() => setMobileNav(false)}
+                  className="w-9 h-9 rounded-full bg-gray-100 grid place-items-center shrink-0"
+                  aria-label="Close menu"
+                >
+                  <X size={16} />
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/admin"
+                className="w-10 h-10 rounded-2xl grad-bg grid place-items-center text-white font-display font-extrabold text-lg"
+                aria-label="Dashboard"
+              >
+                K
+              </Link>
+            )}
+          </div>
+
+          {navContent(!mobileNav)}
+
+          <div className="border-t border-gray-100 p-2.5 shrink-0">
+            <button
+              onClick={() => setMobileNav((v) => !v)}
+              className={`w-full flex items-center gap-3 rounded-2xl py-3 text-[13px] font-extrabold text-gray-500 hover:bg-gray-50 transition ${
+                mobileNav ? "px-3.5" : "justify-center px-0"
+              }`}
+              aria-label={mobileNav ? "Collapse menu" : "Expand menu"}
+            >
+              {mobileNav ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+              {mobileNav && <span>Collapse Menu</span>}
             </button>
           </div>
-          {navContent(false)}
         </aside>
       </div>
 
-      {/* main column */}
-      <div className="flex-1 min-w-0 flex flex-col">
+      {/* main column — pl clears the fixed mobile icon rail */}
+      <div className="flex-1 min-w-0 flex flex-col pl-[64px] lg:pl-0">
         {/* header */}
         <header className="sticky top-0 z-40 h-[72px] bg-white/90 backdrop-blur-md border-b border-gray-100 flex items-center gap-3 px-4 md:px-6">
           <button
-            onClick={() => setMobileNav(true)}
-            className="lg:hidden w-10 h-10 grid place-items-center rounded-2xl hover:bg-gray-100"
-            aria-label="Open menu"
+            onClick={() => setMobileNav((v) => !v)}
+            className="lg:hidden w-10 h-10 grid place-items-center rounded-2xl hover:bg-gray-100 shrink-0"
+            aria-label={mobileNav ? "Close menu" : "Open menu"}
           >
             <MenuIcon size={20} />
           </button>

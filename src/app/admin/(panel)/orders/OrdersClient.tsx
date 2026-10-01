@@ -5,32 +5,38 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Activity,
-  Banknote,
+  Boxes,
   CalendarDays,
+  CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  CircleUserRound,
   Clock,
   Eye,
-  Globe,
-  Hash,
+  Fingerprint,
   Inbox,
   ListChecks,
   Loader2,
-  MapPin,
+  MapPinned,
+  MousePointerClick,
   PackageCheck,
   PackageSearch,
   Pencil,
-  Phone,
+  PhoneCall,
   Printer,
-  Receipt,
+  ReceiptText,
   RotateCcw,
   Search,
   ShieldAlert,
+  ShieldCheck,
+  ShieldQuestionMark,
+  ShoppingBasket,
   ShoppingCart,
   Trash2,
   Truck,
   User,
-  UserRound,
+  Wallet,
   X,
   XCircle,
 } from "lucide-react";
@@ -60,7 +66,9 @@ const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ size?: num
   { key: "cancelled", label: "Cancelled", icon: XCircle },
 ];
 
-const STATUS_ICON: Record<string, React.ComponentType<{ size?: number | string; className?: string }>> = {
+type IconCmp = React.ComponentType<{ size?: number | string; className?: string; strokeWidth?: number }>;
+
+const STATUS_ICON: Record<string, IconCmp> = {
   pending: Clock,
   confirmed: Truck,
   delivered: PackageCheck,
@@ -89,15 +97,17 @@ function Th({
   label,
   className = "",
 }: {
-  icon: React.ComponentType<{ size?: number | string; className?: string }>;
+  icon: React.ComponentType<{ size?: number | string; className?: string; strokeWidth?: number }>;
   label: string;
   className?: string;
 }) {
   return (
-    <th className={`font-extrabold px-3 py-3 text-[10.5px] uppercase tracking-wider text-gray-400 ${className}`}>
-      <span className="inline-flex items-center gap-1.5">
-        <Icon size={12} className="text-[var(--g2)]" />
-        {label}
+    <th className={`px-3 py-3.5 align-middle ${className}`}>
+      <span className="inline-flex items-center gap-2 whitespace-nowrap">
+        <span className="w-[26px] h-[26px] rounded-[9px] bg-white grid place-items-center text-[var(--g2)] shadow-[0_1px_3px_rgba(17,18,28,0.07),inset_0_0_0_1px_rgba(255,122,0,0.14)]">
+          <Icon size={13} strokeWidth={2.4} />
+        </span>
+        <span className="text-[10.5px] font-extrabold uppercase tracking-[0.14em] text-gray-500">{label}</span>
       </span>
     </th>
   );
@@ -107,44 +117,99 @@ function InfoChip({
   icon: Icon,
   children,
   tone = "default",
+  title,
 }: {
-  icon: React.ComponentType<{ size?: number | string; className?: string }>;
+  icon: React.ComponentType<{ size?: number | string; className?: string; strokeWidth?: number }>;
   children: React.ReactNode;
   tone?: "default" | "brand";
+  title?: string;
 }) {
   return (
     <span
-      className={`flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-bold min-w-0 ${
-        tone === "brand" ? "grad-soft text-gray-800" : "bg-gray-50 text-gray-600"
+      title={title}
+      className={`flex items-center gap-2 rounded-xl pl-1.5 pr-2.5 py-1.5 text-[11px] font-bold min-w-0 border transition ${
+        tone === "brand"
+          ? "grad-soft border-[color-mix(in_srgb,var(--g1)_22%,transparent)] text-gray-800"
+          : "bg-[#fafafc] border-gray-100 text-gray-600 hover:border-gray-200"
       }`}
     >
-      <Icon size={11} className="shrink-0 text-[var(--g2)]" />
+      <span
+        className={`w-[22px] h-[22px] rounded-lg grid place-items-center shrink-0 ${
+          tone === "brand" ? "grad-bg text-white" : "bg-white text-[var(--g2)] shadow-[0_1px_2px_rgba(17,18,28,0.08)]"
+        }`}
+      >
+        <Icon size={11} strokeWidth={2.5} />
+      </span>
       <span className="min-w-0 truncate">{children}</span>
     </span>
   );
 }
 
+const FRAUD_CHIP: Record<string, string> = {
+  emerald: "bg-emerald-50 text-emerald-600 ring-emerald-100",
+  amber: "bg-amber-50 text-amber-600 ring-amber-100",
+  rose: "bg-rose-50 text-rose-600 ring-rose-100",
+  slate: "bg-slate-100 text-slate-500 ring-slate-200",
+};
+
+const FRAUD_GLOW: Record<string, string> = {
+  emerald: "shadow-[0_0_10px_rgba(16,185,129,0.45)]",
+  amber: "shadow-[0_0_10px_rgba(245,158,11,0.45)]",
+  rose: "shadow-[0_0_10px_rgba(244,63,94,0.45)]",
+  slate: "",
+};
+
 function FraudBar({ fraud }: { fraud: AdminOrderRow["fraud"] }) {
   const pct = fraud.percent ?? 0;
+  const Icon = fraud.tone === "rose" ? ShieldAlert : fraud.tone === "slate" ? ShieldQuestionMark : ShieldCheck;
   return (
-    <div className="w-[104px]">
-      <div className="flex items-center justify-between gap-1">
-        <span className={`text-[10px] font-extrabold uppercase tracking-wide ${FRAUD_TEXT[fraud.tone]}`}>
+    <div className="w-[124px]">
+      <div className="flex items-center justify-between gap-1.5">
+        <span
+          className={`inline-flex items-center gap-1 text-[9.5px] font-extrabold uppercase tracking-[0.1em] px-2 py-[3px] rounded-full ring-1 ${
+            FRAUD_CHIP[fraud.tone] ?? FRAUD_CHIP.slate
+          }`}
+        >
+          <Icon size={10} strokeWidth={2.6} />
           {fraud.label}
         </span>
-        <span className="text-[10.5px] font-extrabold text-gray-500">
+        <span className={`font-display text-[13px] font-extrabold leading-none ${FRAUD_TEXT[fraud.tone]}`}>
           {fraud.percent === null ? "—" : `${fraud.percent}%`}
         </span>
       </div>
-      <div className="mt-1 h-[6px] rounded-full bg-gray-100 overflow-hidden">
-        <div className={`h-full rounded-full transition-all ${FRAUD_BAR[fraud.tone]}`} style={{ width: `${pct}%` }} />
+
+      <div className="relative mt-2 h-[8px] rounded-full bg-gray-100 shadow-[inset_0_1px_2px_rgba(17,18,28,0.09)] overflow-hidden">
+        <span className="absolute inset-0 opacity-[0.55] bg-[repeating-linear-gradient(135deg,transparent_0_5px,rgba(255,255,255,0.7)_5px_10px)]" />
+        <div
+          className={`relative h-full rounded-full transition-[width] duration-500 ease-out ${FRAUD_BAR[fraud.tone]} ${
+            FRAUD_GLOW[fraud.tone] ?? ""
+          }`}
+          style={{ width: `${Math.max(pct, fraud.percent === null ? 0 : 6)}%` }}
+        >
+          <span className="absolute inset-x-0 top-0 h-1/2 rounded-full bg-gradient-to-b from-white/45 to-transparent" />
+        </div>
       </div>
-      <p className="mt-1 text-[9.5px] font-bold text-gray-400 whitespace-nowrap">
-        {fraud.delivered} ok · {fraud.cancelled} cancel · {fraud.totalOrders} total
-      </p>
+
+      <div className="mt-2 flex items-center gap-2.5 text-[9.5px] font-extrabold text-gray-400">
+        <span className="inline-flex items-center gap-1 text-emerald-500">
+          <CheckCircle2 size={10} strokeWidth={2.6} />
+          {fraud.delivered}
+        </span>
+        <span className="inline-flex items-center gap-1 text-rose-400">
+          <XCircle size={10} strokeWidth={2.6} />
+          {fraud.cancelled}
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <Boxes size={10} strokeWidth={2.6} />
+          {fraud.totalOrders}
+        </span>
+      </div>
     </div>
   );
 }
+
+const ACTION_BTN =
+  "w-[30px] h-[30px] rounded-full grid place-items-center transition-all duration-200 shadow-[0_1px_3px_rgba(17,18,28,0.08)] hover:-translate-y-0.5 hover:shadow-[0_6px_14px_rgba(17,18,28,0.18)]";
 
 function ActionPad({
   code,
@@ -155,21 +220,35 @@ function ActionPad({
   onCourier: () => void;
   onDelete: () => void;
 }) {
-  const base =
-    "w-8 h-8 rounded-full grid place-items-center border border-gray-200 text-gray-400 transition hover:text-white hover:border-transparent";
   return (
-    <div className="inline-grid grid-cols-2 gap-1.5">
-      <Link href={`/admin/orders/${code}`} title="View order" className={`${base} hover:grad-bg`}>
-        <Eye size={14} />
+    <div className="inline-grid grid-cols-2 gap-1.5 p-1.5 rounded-2xl bg-[#fafafc] border border-gray-100">
+      <Link
+        href={`/admin/orders/${code}`}
+        title="View order"
+        className={`${ACTION_BTN} grad-soft text-[var(--g2)] hover:grad-bg hover:text-white`}
+      >
+        <Eye size={14} strokeWidth={2.4} />
       </Link>
-      <Link href={`/admin/orders/${code}?edit=1`} title="Edit order" className={`${base} hover:bg-indigo-500`}>
-        <Pencil size={13} />
+      <Link
+        href={`/admin/orders/${code}?edit=1`}
+        title="Edit order"
+        className={`${ACTION_BTN} bg-indigo-50 text-indigo-500 hover:bg-indigo-500 hover:text-white`}
+      >
+        <Pencil size={13} strokeWidth={2.4} />
       </Link>
-      <button onClick={onCourier} title="Send to courier" className={`${base} hover:bg-sky-500`}>
-        <Truck size={14} />
+      <button
+        onClick={onCourier}
+        title="Send to courier (coming soon)"
+        className={`${ACTION_BTN} bg-sky-50 text-sky-500 hover:bg-sky-500 hover:text-white`}
+      >
+        <Truck size={14} strokeWidth={2.4} />
       </button>
-      <button onClick={onDelete} title="Delete order" className={`${base} hover:bg-rose-500`}>
-        <Trash2 size={13} />
+      <button
+        onClick={onDelete}
+        title="Delete order"
+        className={`${ACTION_BTN} bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white`}
+      >
+        <Trash2 size={13} strokeWidth={2.4} />
       </button>
     </div>
   );
@@ -177,27 +256,32 @@ function ActionPad({
 
 function ItemTiles({ items, count }: { items: AdminOrderRow["items"]; count: number }) {
   const shown = items.slice(0, 2);
-  const rest = items.length - shown.length;
+  const rest = count - shown.reduce((a, i) => a + i.qty, 0);
   return (
-    <div className="flex items-start gap-2">
+    <div className="flex items-start gap-2 w-[176px]">
       {shown.map((it, i) => (
         <div key={i} className="w-[64px] shrink-0">
-          <span className="block w-[64px] h-[52px] rounded-lg overflow-hidden bg-gray-100 grid place-items-center">
+          <span className="relative grid place-items-center w-[64px] h-[54px] rounded-xl overflow-hidden bg-gray-100 ring-1 ring-gray-100 shadow-[0_1px_3px_rgba(17,18,28,0.08)]">
             {it.image ? (
               /* eslint-disable-next-line @next/next/no-img-element */
               <img src={it.image} alt={it.name} className="w-full h-full object-cover" loading="lazy" />
             ) : (
               <PackageSearch size={16} className="text-gray-300" />
             )}
+            <span className="absolute bottom-1 right-1 grad-bg text-white text-[9px] font-extrabold leading-none px-1.5 py-[3px] rounded-md shadow-sm">
+              ×{it.qty}
+            </span>
           </span>
-          <span className="mt-1 block text-[10.5px] font-bold text-gray-700 leading-tight line-clamp-2" title={it.name}>
+          <span
+            className="mt-1.5 block text-[10.5px] font-bold text-gray-700 leading-tight line-clamp-2"
+            title={it.name}
+          >
             {it.name}
           </span>
-          <span className="mt-0.5 block text-[10px] font-extrabold grad-text">× {it.qty}</span>
         </div>
       ))}
       {rest > 0 && (
-        <span className="shrink-0 mt-4 text-[10.5px] font-extrabold text-gray-400 bg-gray-50 rounded-lg px-2 py-1">
+        <span className="shrink-0 mt-5 inline-grid place-items-center min-w-[34px] h-[26px] px-1.5 text-[10.5px] font-extrabold text-gray-500 bg-[#fafafc] border border-gray-100 rounded-lg">
           +{rest}
         </span>
       )}
@@ -567,309 +651,235 @@ export default function OrdersClient({ initial }: { initial: AdminOrderList }) {
           </div>
         ) : (
           <>
-            {/* ---------- desktop table ---------- */}
-            <div className="hidden xl:block overflow-x-auto">
-              <table className="w-full min-w-[1240px] text-sm">
-                <thead>
-                  <tr className="text-left border-b border-gray-100 bg-gray-50/60">
-                    <th className="px-3 py-3 w-[42px]">
-                      <input
-                        type="checkbox"
-                        checked={allChecked}
-                        ref={(el) => {
-                          if (el) el.indeterminate = someChecked;
-                        }}
-                        onChange={toggleAll}
-                        className="w-4 h-4 accent-[var(--g2)] cursor-pointer"
-                        aria-label="Select all orders on this page"
-                      />
-                    </th>
-                    <Th icon={Hash} label="SL" className="w-[56px]" />
-                    <Th icon={Receipt} label="Info" />
-                    <Th icon={UserRound} label="Customer Info" />
-                    <Th icon={Banknote} label="Price" />
-                    <Th icon={PackageSearch} label="Order Details" />
-                    <Th icon={Activity} label="Status" />
-                    <Th icon={ShieldAlert} label="Fraud" />
-                    <Th icon={Eye} label="Action" className="text-right" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.items.map((o, i) => {
-                    const StatusIcon = STATUS_ICON[o.status] ?? Clock;
-                    const checked = selected.includes(o.id);
-                    return (
-                      <tr
-                        key={o.id}
-                        className={`border-b border-gray-50 last:border-0 align-top transition ${
-                          checked ? "bg-[color-mix(in_srgb,var(--g2)_5%,white)]" : "hover:bg-gray-50/60"
-                        }`}
-                      >
-                        <td className="px-3 py-3.5">
+            {/* ---------- table (same table on every screen; scrolls inside the
+                 card so the page itself never overflows sideways) ---------- */}
+            <div className="relative">
+              <div className="overflow-x-auto overscroll-x-contain [scrollbar-width:thin] [scrollbar-color:#d8d8e2_transparent]">
+                <table className="w-full min-w-[1040px] text-sm">
+                  <thead>
+                    <tr className="text-left bg-gradient-to-r from-[#fff8f3] via-[#fff6f8] to-[#fff4f8] border-y border-gray-100">
+                      <th className="px-3 py-3.5 w-[48px]">
+                        <span className="flex flex-col items-center gap-1">
                           <input
                             type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleOne(o.id)}
+                            checked={allChecked}
+                            ref={(el) => {
+                              if (el) el.indeterminate = someChecked;
+                            }}
+                            onChange={toggleAll}
                             className="w-4 h-4 accent-[var(--g2)] cursor-pointer"
-                            aria-label={`Select order ${o.code}`}
+                            aria-label="Select all orders on this page"
                           />
-                        </td>
-
-                        <td className="px-3 py-3.5">
-                          <span className="inline-grid place-items-center w-7 h-7 rounded-lg bg-gray-100 text-[11.5px] font-extrabold text-gray-600">
-                            {sl(i)}
-                          </span>
-                        </td>
-
-                        {/* info */}
-                        <td className="px-3 py-3.5">
-                          <div className="flex flex-col gap-1 w-[168px]">
-                            <InfoChip icon={Receipt} tone="brand">
-                              <Link href={`/admin/orders/${o.code}`} className="grad-text font-extrabold">
-                                #{o.code}
-                              </Link>
-                            </InfoChip>
-                            <InfoChip icon={CalendarDays}>{o.date}</InfoChip>
-                            <InfoChip icon={Globe}>{o.customerIp ?? "IP not captured"}</InfoChip>
-                          </div>
-                        </td>
-
-                        {/* customer */}
-                        <td className="px-3 py-3.5">
-                          <div className="flex flex-col gap-1.5 w-[212px]">
-                            <span className="flex items-center gap-1.5 text-[12.5px] font-bold text-gray-800 min-w-0">
-                              <User size={12} className="shrink-0 text-[var(--g2)]" />
-                              <span className="truncate">{o.customerName}</span>
-                            </span>
-                            <a
-                              href={`tel:${o.phone}`}
-                              className="flex items-center gap-1.5 text-[12px] font-bold text-gray-500 hover:grad-text min-w-0"
-                            >
-                              <Phone size={12} className="shrink-0 text-[var(--g2)]" />
-                              <span className="truncate">{o.phone}</span>
-                            </a>
-                            <InlineEdit
-                              value={o.address}
-                              title="Edit address"
-                              as="textarea"
-                              prefix={<MapPin size={12} className="shrink-0 mt-[3px] text-[var(--g2)]" />}
-                              display={
-                                <span className="block text-[11.5px] font-semibold text-gray-500 leading-snug line-clamp-3">
-                                  {o.address}
-                                </span>
-                              }
-                              onSave={async (next) => {
-                                await saveField(o.id, { address: next });
-                                patchRow(o.id, { address: next });
-                                showToast("ok", `Address updated for #${o.code}`);
-                              }}
-                            />
-                          </div>
-                        </td>
-
-                        {/* price */}
-                        <td className="px-3 py-3.5">
-                          <div className="w-[132px]">
-                            <InlineEdit
-                              value={String(o.total)}
-                              type="number"
-                              title="Edit total"
-                              inputClassName="w-[90px]"
-                              prefix={<Banknote size={13} className="shrink-0 mt-[2px] text-[var(--g2)]" />}
-                              display={
-                                <span className="font-display font-extrabold text-[15px] grad-text">{taka(o.total)}</span>
-                              }
-                              onSave={async (next) => {
-                                const n = Number(next);
-                                if (!Number.isFinite(n) || n < 0) throw new Error("Invalid amount");
-                                await saveField(o.id, { total: n });
-                                patchRow(o.id, { total: Math.round(n) });
-                                showToast("ok", `Total updated for #${o.code}`);
-                              }}
-                            />
-                            <p className="mt-1 text-[10.5px] font-bold text-gray-400 leading-tight">
-                              Sub {taka(o.subtotal)} · Dlv {taka(o.deliveryCharge)}
-                            </p>
-                            <p className="text-[10.5px] font-bold text-gray-400 truncate" title={o.deliveryAreaName}>
-                              {o.deliveryAreaName}
-                            </p>
-                          </div>
-                        </td>
-
-                        {/* items */}
-                        <td className="px-3 py-3.5">
-                          <ItemTiles items={o.items} count={o.itemsCount} />
-                        </td>
-
-                        {/* status */}
-                        <td className="px-3 py-3.5">
-                          <div className="w-[138px]">
-                            <span
-                              className={`inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wide px-2.5 py-1 rounded-full mb-1.5 ${
-                                ORDER_STATUS_CHIP[o.status] ?? "bg-gray-100 text-gray-500"
-                              }`}
-                            >
-                              <StatusIcon size={11} />
-                              {ORDER_STATUS_LABEL[o.status] ?? o.status}
-                            </span>
-                            <span className="relative block">
-                              <select
-                                value={o.status}
-                                disabled={rowBusy === o.id}
-                                onChange={(e) => changeStatus(o, e.target.value as OrderStatus)}
-                                className={`w-full appearance-none rounded-xl border-[1.5px] px-2.5 py-2 pr-7 text-[11.5px] font-extrabold cursor-pointer transition disabled:opacity-60 ${
-                                  STATUS_SELECT[o.status] ?? "border-gray-200 bg-white text-gray-700"
-                                }`}
-                              >
-                                {ORDER_STATUSES.map((s) => (
-                                  <option key={s} value={s}>
-                                    {ORDER_STATUS_LABEL[s]}
-                                  </option>
-                                ))}
-                              </select>
-                              {rowBusy === o.id && (
-                                <Loader2
-                                  size={12}
-                                  className="absolute right-2 top-1/2 -translate-y-1/2 animate-spin text-gray-500"
-                                />
-                              )}
-                            </span>
-                          </div>
-                        </td>
-
-                        {/* fraud */}
-                        <td className="px-3 py-3.5">
-                          <FraudBar fraud={o.fraud} />
-                        </td>
-
-                        {/* actions */}
-                        <td className="px-3 py-3.5">
-                          <div className="flex justify-end">
-                            <ActionPad code={o.code} onCourier={courierNotice} onDelete={() => setToDelete(o)} />
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* ---------- mobile / tablet cards ---------- */}
-            <div className="xl:hidden divide-y divide-gray-50">
-              {data.items.map((o, i) => {
-                const StatusIcon = STATUS_ICON[o.status] ?? Clock;
-                const checked = selected.includes(o.id);
-                return (
-                  <div key={o.id} className={`p-4 ${checked ? "bg-[color-mix(in_srgb,var(--g2)_5%,white)]" : ""}`}>
-                    <div className="flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleOne(o.id)}
-                        className="mt-1 w-4 h-4 accent-[var(--g2)] shrink-0"
-                        aria-label={`Select order ${o.code}`}
-                      />
-                      <span className="inline-grid place-items-center w-7 h-7 rounded-lg bg-gray-100 text-[11.5px] font-extrabold text-gray-600 shrink-0">
-                        {sl(i)}
-                      </span>
-                      <div className="min-w-0 flex-1 space-y-1">
-                        <InfoChip icon={Receipt} tone="brand">
-                          <Link href={`/admin/orders/${o.code}`} className="grad-text font-extrabold">
-                            #{o.code}
-                          </Link>
-                        </InfoChip>
-                        <InfoChip icon={CalendarDays}>{o.date}</InfoChip>
-                        <InfoChip icon={Globe}>{o.customerIp ?? "IP not captured"}</InfoChip>
-                      </div>
-                      <span
-                        className={`shrink-0 inline-flex items-center gap-1 text-[9.5px] font-extrabold uppercase tracking-wide px-2 py-1 rounded-full ${
-                          ORDER_STATUS_CHIP[o.status] ?? "bg-gray-100 text-gray-500"
-                        }`}
-                      >
-                        <StatusIcon size={10} />
-                        {ORDER_STATUS_LABEL[o.status] ?? o.status}
-                      </span>
-                    </div>
-
-                    <div className="mt-3 space-y-1.5">
-                      <span className="flex items-center gap-1.5 text-[13px] font-bold text-gray-800 min-w-0">
-                        <User size={12} className="shrink-0 text-[var(--g2)]" />
-                        <span className="truncate">{o.customerName}</span>
-                      </span>
-                      <a href={`tel:${o.phone}`} className="flex items-center gap-1.5 text-[12.5px] font-bold text-gray-500">
-                        <Phone size={12} className="shrink-0 text-[var(--g2)]" />
-                        {o.phone}
-                      </a>
-                      <InlineEdit
-                        value={o.address}
-                        title="Edit address"
-                        as="textarea"
-                        prefix={<MapPin size={12} className="shrink-0 mt-[3px] text-[var(--g2)]" />}
-                        display={
-                          <span className="block text-[12px] font-semibold text-gray-500 leading-snug">{o.address}</span>
-                        }
-                        onSave={async (next) => {
-                          await saveField(o.id, { address: next });
-                          patchRow(o.id, { address: next });
-                          showToast("ok", `Address updated for #${o.code}`);
-                        }}
-                      />
-                    </div>
-
-                    <div className="mt-3 flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <InlineEdit
-                          value={String(o.total)}
-                          type="number"
-                          title="Edit total"
-                          inputClassName="w-[90px]"
-                          prefix={<Banknote size={13} className="shrink-0 mt-[2px] text-[var(--g2)]" />}
-                          display={<span className="font-display font-extrabold text-[16px] grad-text">{taka(o.total)}</span>}
-                          onSave={async (next) => {
-                            const n = Number(next);
-                            if (!Number.isFinite(n) || n < 0) throw new Error("Invalid amount");
-                            await saveField(o.id, { total: n });
-                            patchRow(o.id, { total: Math.round(n) });
-                            showToast("ok", `Total updated for #${o.code}`);
-                          }}
-                        />
-                        <p className="mt-0.5 text-[10.5px] font-bold text-gray-400">
-                          Sub {taka(o.subtotal)} · Dlv {taka(o.deliveryCharge)} · {o.deliveryAreaName}
-                        </p>
-                      </div>
-                      <FraudBar fraud={o.fraud} />
-                    </div>
-
-                    <div className="mt-3">
-                      <ItemTiles items={o.items} count={o.itemsCount} />
-                    </div>
-
-                    <div className="mt-3 flex items-center gap-2">
-                      <span className="relative flex-1 min-w-0">
-                        <select
-                          value={o.status}
-                          disabled={rowBusy === o.id}
-                          onChange={(e) => changeStatus(o, e.target.value as OrderStatus)}
-                          className={`w-full appearance-none rounded-xl border-[1.5px] px-3 py-2.5 pr-8 text-[12px] font-extrabold cursor-pointer transition disabled:opacity-60 ${
-                            STATUS_SELECT[o.status] ?? "border-gray-200 bg-white text-gray-700"
+                          <span className="text-[8.5px] font-extrabold uppercase tracking-wider text-gray-400">All</span>
+                        </span>
+                      </th>
+                      <Th icon={ReceiptText} label="Info" />
+                      <Th icon={CircleUserRound} label="Customer Info" />
+                      <Th icon={Wallet} label="Price" />
+                      <Th icon={ShoppingBasket} label="Order Details" />
+                      <Th icon={Activity} label="Status" />
+                      <Th icon={ShieldCheck} label="Fraud" />
+                      <Th icon={MousePointerClick} label="Action" className="text-right" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.items.map((o, i) => {
+                      const StatusIcon = STATUS_ICON[o.status] ?? Clock;
+                      const checked = selected.includes(o.id);
+                      return (
+                        <tr
+                          key={o.id}
+                          className={`group border-b border-gray-50 last:border-0 align-top transition-colors ${
+                            checked
+                              ? "bg-[color-mix(in_srgb,var(--g2)_6%,white)]"
+                              : i % 2 === 1
+                                ? "bg-[#fcfcfd] hover:bg-[#fff7f3]"
+                                : "hover:bg-[#fff7f3]"
                           }`}
                         >
-                          {ORDER_STATUSES.map((s) => (
-                            <option key={s} value={s}>
-                              {ORDER_STATUS_LABEL[s]}
-                            </option>
-                          ))}
-                        </select>
-                        {rowBusy === o.id && (
-                          <Loader2 size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 animate-spin text-gray-500" />
-                        )}
-                      </span>
-                      <ActionPad code={o.code} onCourier={courierNotice} onDelete={() => setToDelete(o)} />
-                    </div>
-                  </div>
-                );
-              })}
+                          {/* checkbox + serial */}
+                          <td className="px-3 py-4">
+                            <span className="flex flex-col items-center gap-1.5">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleOne(o.id)}
+                                className="w-4 h-4 accent-[var(--g2)] cursor-pointer"
+                                aria-label={`Select order ${o.code}`}
+                              />
+                              <span className="text-[10px] font-extrabold text-gray-300 group-hover:text-gray-400 transition-colors">
+                                {sl(i)}
+                              </span>
+                            </span>
+                          </td>
+
+                          {/* info */}
+                          <td className="px-3 py-4">
+                            <div className="flex flex-col gap-1.5 w-[162px]">
+                              <InfoChip icon={ReceiptText} tone="brand" title="Invoice number">
+                                <Link href={`/admin/orders/${o.code}`} className="grad-text font-extrabold">
+                                  #{o.code}
+                                </Link>
+                              </InfoChip>
+                              <InfoChip icon={CalendarDays} title="Order date">
+                                {o.date}
+                              </InfoChip>
+                              <InfoChip icon={Fingerprint} title="Customer IP address">
+                                {o.customerIp ?? "No IP"}
+                              </InfoChip>
+                            </div>
+                          </td>
+
+                          {/* customer */}
+                          <td className="px-3 py-4">
+                            <div className="flex flex-col gap-1.5 w-[196px]">
+                              <span className="flex items-center gap-2 text-[12.5px] font-extrabold text-gray-800 min-w-0">
+                                <span className="w-[22px] h-[22px] rounded-lg grad-soft grid place-items-center shrink-0 text-[var(--g2)]">
+                                  <User size={11} strokeWidth={2.5} />
+                                </span>
+                                <span className="truncate">{o.customerName}</span>
+                              </span>
+                              <a
+                                href={`tel:${o.phone}`}
+                                className="flex items-center gap-2 text-[12px] font-bold text-gray-600 hover:grad-text min-w-0"
+                              >
+                                <span className="w-[22px] h-[22px] rounded-lg bg-[#fafafc] border border-gray-100 grid place-items-center shrink-0 text-[var(--g2)]">
+                                  <PhoneCall size={11} strokeWidth={2.5} />
+                                </span>
+                                <span className="truncate">{o.phone}</span>
+                              </a>
+                              <InlineEdit
+                                value={o.address}
+                                title="Edit address"
+                                as="textarea"
+                                prefix={
+                                  <span className="w-[22px] h-[22px] rounded-lg bg-[#fafafc] border border-gray-100 grid place-items-center shrink-0 text-[var(--g2)] mt-[1px]">
+                                    <MapPinned size={11} strokeWidth={2.5} />
+                                  </span>
+                                }
+                                display={
+                                  <span className="block text-[11.5px] font-semibold text-gray-500 leading-snug line-clamp-2">
+                                    {o.address}
+                                  </span>
+                                }
+                                onSave={async (next) => {
+                                  await saveField(o.id, { address: next });
+                                  patchRow(o.id, { address: next });
+                                  showToast("ok", `Address updated for #${o.code}`);
+                                }}
+                              />
+                            </div>
+                          </td>
+
+                          {/* price */}
+                          <td className="px-3 py-4">
+                            <div className="w-[126px]">
+                              <InlineEdit
+                                value={String(o.total)}
+                                type="number"
+                                title="Edit total"
+                                inputClassName="w-[88px]"
+                                prefix={
+                                  <span className="w-[22px] h-[22px] rounded-lg grad-soft grid place-items-center shrink-0 text-[var(--g2)] mt-[2px]">
+                                    <Wallet size={11} strokeWidth={2.5} />
+                                  </span>
+                                }
+                                display={
+                                  <span className="font-display font-extrabold text-[15.5px] grad-text leading-none">
+                                    {taka(o.total)}
+                                  </span>
+                                }
+                                onSave={async (next) => {
+                                  const n = Number(next);
+                                  if (!Number.isFinite(n) || n < 0) throw new Error("Invalid amount");
+                                  await saveField(o.id, { total: n });
+                                  patchRow(o.id, { total: Math.round(n) });
+                                  showToast("ok", `Total updated for #${o.code}`);
+                                }}
+                              />
+                              <div className="mt-2 flex flex-wrap gap-1">
+                                <span className="text-[9.5px] font-extrabold text-gray-500 bg-[#fafafc] border border-gray-100 rounded-md px-1.5 py-[3px]">
+                                  Sub {taka(o.subtotal)}
+                                </span>
+                                <span className="text-[9.5px] font-extrabold text-gray-500 bg-[#fafafc] border border-gray-100 rounded-md px-1.5 py-[3px]">
+                                  Dlv {taka(o.deliveryCharge)}
+                                </span>
+                              </div>
+                              <p
+                                className="mt-1 text-[10px] font-bold text-gray-400 truncate"
+                                title={o.deliveryAreaName}
+                              >
+                                {o.deliveryAreaName}
+                              </p>
+                            </div>
+                          </td>
+
+                          {/* items */}
+                          <td className="px-3 py-4">
+                            <ItemTiles items={o.items} count={o.itemsCount} />
+                          </td>
+
+                          {/* status */}
+                          <td className="px-3 py-4">
+                            <div className="w-[130px]">
+                              <span
+                                className={`inline-flex items-center gap-1.5 text-[9.5px] font-extrabold uppercase tracking-[0.1em] px-2.5 py-[5px] rounded-full mb-2 ${
+                                  ORDER_STATUS_CHIP[o.status] ?? "bg-gray-100 text-gray-500"
+                                }`}
+                              >
+                                <StatusIcon size={11} strokeWidth={2.6} />
+                                {ORDER_STATUS_LABEL[o.status] ?? o.status}
+                              </span>
+                              <span className="relative block">
+                                <select
+                                  value={o.status}
+                                  disabled={rowBusy === o.id}
+                                  onChange={(e) => changeStatus(o, e.target.value as OrderStatus)}
+                                  className={`w-full appearance-none rounded-xl border-[1.5px] pl-2.5 pr-7 py-2 text-[11.5px] font-extrabold cursor-pointer transition disabled:opacity-60 hover:shadow-[0_2px_8px_rgba(17,18,28,0.08)] ${
+                                    STATUS_SELECT[o.status] ?? "border-gray-200 bg-white text-gray-700"
+                                  }`}
+                                >
+                                  {ORDER_STATUSES.map((s) => (
+                                    <option key={s} value={s}>
+                                      {ORDER_STATUS_LABEL[s]}
+                                    </option>
+                                  ))}
+                                </select>
+                                {rowBusy === o.id ? (
+                                  <Loader2
+                                    size={12}
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 animate-spin text-gray-500 pointer-events-none"
+                                  />
+                                ) : (
+                                  <ChevronDown
+                                    size={13}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 opacity-60 pointer-events-none"
+                                  />
+                                )}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* fraud */}
+                          <td className="px-3 py-4">
+                            <FraudBar fraud={o.fraud} />
+                          </td>
+
+                          {/* actions */}
+                          <td className="px-3 py-4">
+                            <div className="flex justify-end">
+                              <ActionPad code={o.code} onCourier={courierNotice} onDelete={() => setToDelete(o)} />
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* soft edge so it reads as "scroll me" on narrow screens */}
+              <span className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-white to-transparent 2xl:hidden" />
             </div>
 
             {/* ---------- pagination ---------- */}
