@@ -1,10 +1,12 @@
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { courierConfig, orders, type CourierConfigRow } from "@/db/schema";
 import { authSecretIsSet, decryptSecret, encryptSecret } from "@/lib/courier-crypto";
 import {
   COURIER_BULK_MAX,
   COURIER_DEFAULT_BASE,
+  COURIER_STATUS,
+  COURIER_TO_ORDER_STATUS,
   COURIER_LIMITS,
   COURIER_PROVIDER,
   courierBaseError,
@@ -15,6 +17,7 @@ import {
   normalizeBase,
   type CourierConfigPublic,
   type CourierFraudReport,
+  type CourierSyncSummary,
   type CourierSendResult,
 } from "@/lib/courier";
 
@@ -69,6 +72,10 @@ export function toPublicConfig(row: CourierConfigRow | null): CourierConfigPubli
     lastBalance: row?.lastBalance ?? null,
     lastCheckedAt: row?.lastCheckedAt ? row.lastCheckedAt.toISOString() : null,
     lastError: row?.lastError ?? "",
+    autoSync: row?.autoSync ?? true,
+    lastSyncAt: row?.lastSyncAt ? row.lastSyncAt.toISOString() : null,
+    lastSyncCount: row?.lastSyncCount ?? null,
+    lastSyncError: row?.lastSyncError ?? "",
   };
 }
 
@@ -80,6 +87,7 @@ export async function saveCourierConfig(body: {
   secretKey?: unknown;
   isActive?: unknown;
   sentStatusKey?: unknown;
+  autoSync?: unknown;
   clearKeys?: unknown;
 }): Promise<CourierConfigPublic | CourierError> {
   const { row, ready } = await loadCourierConfig();
@@ -118,6 +126,8 @@ export async function saveCourierConfig(body: {
       }
     }
   }
+
+  if (body.autoSync !== undefined) patch.autoSync = Boolean(body.autoSync);
 
   if (body.sentStatusKey !== undefined) {
     const v = String(body.sentStatusKey).trim();
@@ -651,4 +661,148 @@ export async function courierSummary(): Promise<CourierSummary> {
     .from(orders)
     .where(and(isNull(orders.courierConsignmentId), sql`${orders.status} not in ('delivered','cancelled')`));
   return { sent: sent?.n ?? 0, notSent: notSent?.n ?? 0 };
+}
+
+/* ------------------------------------------------------------------ */
+/* scheduled sync                                                       */
+/* ------------------------------------------------------------------ */
+
+/** Courier statuses that will never change again — stop asking about them. */
+const SETTLED_KEYS = Object.keys(COURIER_STATUS).filter((k) => COURIER_STATUS[k].final);
+
+/**
+ * Booked parcels whose courier status is not yet final.
+ * `notInArray` rather than a raw `<> all(...)`: inside an `sql` template an
+ * array is expanded into one placeholder per element, which Postgres then
+ * rejects as "ALL (array) requires array on right side". NULL needs the
+ * explicit arm because `NOT IN` is NULL for a NULL column.
+ */
+function stillMovingWhere() {
+  return and(
+    isNotNull(orders.courierConsignmentId),
+    or(isNull(orders.courierStatus), notInArray(orders.courierStatus, SETTLED_KEYS))
+  );
+}
+
+/** Their status cache is 60s; syncing faster than this only burns rate limit. */
+const SYNC_MIN_GAP_MS = 60_000;
+/** Netlify caps a scheduled function at 30s — leave room to write results. */
+const SYNC_BUDGET_MS = 18_000;
+const SYNC_CONCURRENCY = 4;
+
+export type SyncOptions = { limit?: number; force?: boolean };
+
+/**
+ * Asks the courier about parcels that are still moving, oldest-checked first,
+ * and moves our own order status when the courier reaches a settled outcome.
+ *
+ * Deliberately bounded: a batch limit, a wall-clock budget and a minimum gap
+ * between runs, so a cron that fires too eagerly cannot trip the 429.
+ */
+export async function syncCourierStatuses(
+  opts: SyncOptions = {}
+): Promise<CourierSyncSummary | CourierError> {
+  const limit = Math.min(Math.max(opts.limit ?? 40, 1), 200);
+  const creds = await credentials();
+  if ("error" in creds) return creds;
+
+  if (!opts.force) {
+    const last = creds.row.lastSyncAt?.getTime() ?? 0;
+    const since = Date.now() - last;
+    if (since < SYNC_MIN_GAP_MS) {
+      return {
+        checked: 0,
+        statusChanged: 0,
+        ordersMoved: 0,
+        failed: 0,
+        remaining: 0,
+        skipped: `Synced ${Math.round(since / 1000)}s ago — the courier caches status for 60s`,
+      };
+    }
+  }
+
+  /* Everything booked whose courier status is not yet a final one. Null first
+     so a parcel that has never been checked jumps the queue. */
+  const pendingWhere = stillMovingWhere();
+
+  const queue = await db
+    .select({ id: orders.id, code: orders.code, cid: orders.courierConsignmentId, status: orders.status })
+    .from(orders)
+    .where(pendingWhere)
+    .orderBy(sql`${orders.courierCheckedAt} asc nulls first`, orders.id)
+    .limit(limit);
+
+  const [{ n: outstanding } = { n: 0 }] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(orders)
+    .where(pendingWhere);
+
+  const started = Date.now();
+  let checked = 0;
+  let statusChanged = 0;
+  let ordersMoved = 0;
+  let failed = 0;
+  let lastError = "";
+
+  const work = [...queue];
+  const runner = async () => {
+    for (;;) {
+      if (Date.now() - started > SYNC_BUDGET_MS) return;
+      const o = work.shift();
+      if (!o || !o.cid) return;
+
+      const res = await call(creds, `/status_with_return_status_by_cid/${encodeURIComponent(o.cid)}`);
+      const now = new Date();
+      if (!res.ok) {
+        failed++;
+        lastError = res.error ?? "Status check failed";
+        /* Still stamp it so one unreachable parcel cannot block the queue. */
+        await db.update(orders).set({ courierCheckedAt: now }).where(eq(orders.id, o.id));
+        continue;
+      }
+
+      checked++;
+      const next = str((res.body as { delivery_status?: unknown })?.delivery_status);
+      const patch: Partial<typeof orders.$inferInsert> = { courierCheckedAt: now };
+      if (next) {
+        patch.courierStatus = next;
+        statusChanged++;
+        /* Only a confirmed outcome is allowed to move the merchant's own
+           status — "approval pending" is the rider's word, not the courier's. */
+        const mapped = COURIER_TO_ORDER_STATUS[next];
+        if (mapped && mapped !== o.status) {
+          patch.status = mapped;
+          ordersMoved++;
+        }
+      }
+      await db.update(orders).set(patch).where(eq(orders.id, o.id));
+    }
+  };
+
+  await Promise.all(Array.from({ length: Math.min(SYNC_CONCURRENCY, queue.length) }, runner));
+
+  await db
+    .update(courierConfig)
+    .set({ lastSyncAt: new Date(), lastSyncCount: checked, lastSyncError: failed > 0 ? lastError : "" })
+    .where(eq(courierConfig.id, creds.row.id));
+
+  return {
+    checked,
+    statusChanged,
+    ordersMoved,
+    failed,
+    remaining: Math.max(0, outstanding - checked - failed),
+  };
+}
+
+/** Whether the scheduled sync should do anything at all right now. */
+export async function autoSyncEnabled(): Promise<boolean> {
+  const { row } = await loadCourierConfig();
+  return Boolean(row?.isActive && row.autoSync && decryptSecret(row.apiKey) && decryptSecret(row.secretKey));
+}
+
+/** How many booked parcels are still waiting on a settled courier status. */
+export async function courierPendingCount(): Promise<number> {
+  const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(orders).where(stillMovingWhere());
+  return row?.n ?? 0;
 }

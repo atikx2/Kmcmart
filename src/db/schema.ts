@@ -152,6 +152,12 @@ export const courierConfig = pgTable("courier_config", {
   lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
   /** Last connection-test result, shown on the API page. */
   lastError: text("last_error").notNull().default(""),
+  /** Master switch for the scheduled delivery-status sync. */
+  autoSync: boolean("auto_sync").notNull().default(true),
+  lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
+  /** How many orders the last sync actually touched. */
+  lastSyncCount: integer("last_sync_count"),
+  lastSyncError: text("last_sync_error").notNull().default(""),
 });
 
 export const admins = pgTable("admins", {
@@ -202,6 +208,8 @@ export const orders = pgTable("orders", {
   /** Raw delivery_status from the courier, refreshed on demand. */
   courierStatus: text("courier_status"),
   courierSentAt: timestamp("courier_sent_at", { withTimezone: true }),
+  /** Last time the sync asked the courier about this parcel — drives the queue order. */
+  courierCheckedAt: timestamp("courier_checked_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
-import Link from "next/link";
-import { ArrowLeft, Printer } from "lucide-react";
 import { taka } from "@/lib/format";
 import { statusLabel, type AdminOrderDetail, type OrderStatusOption } from "@/lib/order-status";
 
+/** Full A4 invoice, one order per page. The compact shipping label lives in LabelSheet. */
 export default function PrintSheet({
   orders,
   statuses,
@@ -15,44 +13,17 @@ export default function PrintSheet({
   statuses: OrderStatusOption[];
   settings: { siteName: string; phone: string; address: string; email: string };
 }) {
-  useEffect(() => {
-    if (orders.length === 0) return;
-    const t = setTimeout(() => window.print(), 600);
-    return () => clearTimeout(t);
-  }, [orders.length]);
-
   return (
-    <div className="min-h-screen bg-[#f5f5f8] print:bg-white">
+    <>
       <style>{`
         @media print {
-          .no-print { display: none !important; }
           .invoice { page-break-after: always; box-shadow: none !important; border: 0 !important; margin: 0 !important; }
           .invoice:last-child { page-break-after: auto; }
-          @page { margin: 12mm; }
+          @page { size: A4 portrait; margin: 12mm; }
         }
       `}</style>
 
-      <div className="no-print sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
-        <Link
-          href="/admin/orders"
-          className="w-9 h-9 rounded-xl grid place-items-center border border-gray-200 text-gray-500 hover:border-[var(--g1)] hover:text-[var(--g2)] transition"
-          aria-label="Back to orders"
-        >
-          <ArrowLeft size={16} />
-        </Link>
-        <p className="font-display font-extrabold text-[15px]">
-          {orders.length} invoice{orders.length === 1 ? "" : "s"}
-        </p>
-        <button
-          onClick={() => window.print()}
-          className="ml-auto flex items-center gap-2 grad-bg text-white rounded-xl px-4 py-2.5 text-[12.5px] font-extrabold hover:opacity-90 transition"
-        >
-          <Printer size={14} />
-          Print
-        </button>
-      </div>
-
-      <div className="p-4 space-y-4">
+      <div className="space-y-4">
         {orders.length === 0 && (
           <p className="text-center text-sm font-bold text-gray-400 py-16">
             No orders selected. Go back and tick some orders first.
@@ -141,6 +112,6 @@ export default function PrintSheet({
           </div>
         ))}
       </div>
-    </div>
+    </>
   );
 }

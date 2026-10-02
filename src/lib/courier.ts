@@ -6,6 +6,11 @@
  */
 
 export const COURIER_PROVIDER = "steadfast" as const;
+
+/** Display name per provider key — used on shipping labels. */
+export const COURIER_PROVIDER_LABEL: Record<string, string> = {
+  steadfast: "Steadfast",
+};
 export const COURIER_DEFAULT_BASE = "https://portal.packzy.com/api/v1";
 
 /** Steadfast books at most 500 per bulk call; we stay well under it per click. */
@@ -106,6 +111,21 @@ export type CourierConfigPublic = {
   lastBalance: number | null;
   lastCheckedAt: string | null;
   lastError: string;
+  /** Scheduled delivery-status sync. */
+  autoSync: boolean;
+  lastSyncAt: string | null;
+  lastSyncCount: number | null;
+  lastSyncError: string;
+};
+
+/** What one sync pass did, for the panel and the cron log. */
+export type CourierSyncSummary = {
+  checked: number;
+  statusChanged: number;
+  ordersMoved: number;
+  failed: number;
+  remaining: number;
+  skipped?: string;
 };
 
 export function maskKey(value: string): string {

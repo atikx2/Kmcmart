@@ -2,7 +2,13 @@ import type { Metadata } from "next";
 import { CheckCircle2, FileText, Info, KeyRound, Link2, MessageSquare, Wallet, Webhook } from "lucide-react";
 import type { IconCmp } from "@/components/admin/table-ui";
 import { requirePermission } from "@/lib/admin-guard";
-import { authSecretIsSet, courierSummary, loadCourierConfig, toPublicConfig } from "@/lib/admin-courier";
+import {
+  authSecretIsSet,
+  courierPendingCount,
+  courierSummary,
+  loadCourierConfig,
+  toPublicConfig,
+} from "@/lib/admin-courier";
 import { listOrderStatuses } from "@/lib/admin-order-statuses";
 import CourierClient from "./CourierClient";
 
@@ -60,10 +66,11 @@ const SOON: Integration[] = [
 export default async function AdminApiPage() {
   await requirePermission("api");
 
-  const [{ row, ready }, statuses, summary] = await Promise.all([
+  const [{ row, ready }, statuses, summary, pendingParcels] = await Promise.all([
     loadCourierConfig(),
     listOrderStatuses(),
     courierSummary(),
+    courierPendingCount(),
   ]);
 
   return (
@@ -97,6 +104,8 @@ export default async function AdminApiPage() {
         statuses={statuses}
         summary={summary}
         authSecretSet={authSecretIsSet()}
+        cronSecretSet={Boolean(process.env.CRON_SECRET || process.env.AUTH_SECRET)}
+        pendingParcels={pendingParcels}
       />
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">

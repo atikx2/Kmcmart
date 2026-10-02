@@ -4,10 +4,12 @@ import { getSessionAdmin } from "@/lib/admin-auth";
 import { getAdminOrdersByIds } from "@/lib/admin-orders";
 import { listOrderStatuses } from "@/lib/admin-order-statuses";
 import { getSettings } from "@/lib/data";
-import PrintSheet from "./PrintSheet";
+import { loadCourierConfig } from "@/lib/admin-courier";
+import { COURIER_PROVIDER_LABEL } from "@/lib/courier";
+import PrintClient from "./PrintClient";
 
 export const metadata: Metadata = {
-  title: "Print invoices",
+  title: "Print labels",
   robots: { index: false, follow: false },
 };
 export const dynamic = "force-dynamic";
@@ -29,17 +31,19 @@ export default async function AdminPrintPage({
     .filter((n) => Number.isInteger(n) && n > 0)
     .slice(0, 200);
 
-  const [orders, settings, statuses] = await Promise.all([
+  const [orders, settings, statuses, courier] = await Promise.all([
     getAdminOrdersByIds(ids),
     getSettings(),
     listOrderStatuses(),
+    loadCourierConfig(),
   ]);
 
   return (
-    <PrintSheet
+    <PrintClient
       orders={orders}
       statuses={statuses}
       settings={{ siteName: settings.siteName, phone: settings.phone, address: settings.address, email: settings.email }}
+      courierName={COURIER_PROVIDER_LABEL[courier.row?.provider ?? ""] ?? "Courier"}
     />
   );
 }

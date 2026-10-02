@@ -15,13 +15,20 @@ import {
   PackageCheck,
   PlugZap,
   RefreshCw,
+  RotateCw,
+  Timer,
   Trash2,
   Truck,
   Wallet,
   X,
 } from "lucide-react";
 import { taka } from "@/lib/format";
-import { COURIER_DEFAULT_BASE, courierBaseError, type CourierConfigPublic } from "@/lib/courier";
+import {
+  COURIER_DEFAULT_BASE,
+  courierBaseError,
+  type CourierConfigPublic,
+  type CourierSyncSummary,
+} from "@/lib/courier";
 import type { OrderStatusOption } from "@/lib/order-status";
 import ConfirmModal from "@/components/admin/ConfirmModal";
 import Toast, { useToast } from "@/components/admin/Toast";
@@ -59,6 +66,8 @@ export default function CourierClient({
   statuses,
   summary,
   authSecretSet,
+  cronSecretSet,
+  pendingParcels,
 }: {
   initial: CourierConfigPublic;
   ready: boolean;
@@ -66,6 +75,10 @@ export default function CourierClient({
   summary: { sent: number; notSent: number };
   /** False when the deployment has no AUTH_SECRET — encryption still works, but with a shared key. */
   authSecretSet: boolean;
+  /** Whether a dedicated CRON_SECRET guards the scheduled sync endpoint. */
+  cronSecretSet: boolean;
+  /** Booked parcels still waiting on a settled courier status. */
+  pendingParcels: number;
 }) {
   const router = useRouter();
   const [toast, showToast] = useToast();
@@ -83,6 +96,9 @@ export default function CourierClient({
   const [toggling, setToggling] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [togglingSync, setTogglingSync] = useState(false);
+  const [lastSync, setLastSync] = useState<CourierSyncSummary | null>(null);
   const [error, setError] = useState("");
 
   const put = async (body: Record<string, unknown>) => {
@@ -185,7 +201,58 @@ export default function CourierClient({
     }
   };
 
+  const toggleAutoSync = async () => {
+    setTogglingSync(true);
+    try {
+      const next = await put({ autoSync: !cfg.autoSync });
+      setCfg(next);
+      showToast("ok", next.autoSync ? "Auto-sync is on" : "Auto-sync paused");
+      router.refresh();
+    } catch (err) {
+      showToast("err", err instanceof Error ? err.message : "Could not switch auto-sync");
+    } finally {
+      setTogglingSync(false);
+    }
+  };
+
+  const syncNow = async () => {
+    setSyncing(true);
+    try {
+      const res = await fetch("/api/cron/courier-sync?force=1", { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Sync failed");
+      if (json.skipped) {
+        showToast("err", json.skipped);
+      } else {
+        setLastSync(json as CourierSyncSummary);
+        showToast(
+          "ok",
+          json.checked === 0
+            ? "Nothing waiting — every parcel is settled"
+            : `Checked ${json.checked}, ${json.ordersMoved} order(s) moved`
+        );
+      }
+      router.refresh();
+    } catch (err) {
+      showToast("err", err instanceof Error ? err.message : "Sync failed");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const connected = cfg.hasKeys && cfg.isActive;
+  const stamp = (iso: string | null) =>
+    iso
+      ? new Intl.DateTimeFormat("en-GB", {
+          timeZone: "Asia/Dhaka",
+          day: "numeric",
+          month: "short",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        }).format(new Date(iso))
+      : null;
+  const syncedAt = stamp(cfg.lastSyncAt);
   const checkedAt = cfg.lastCheckedAt
     ? new Intl.DateTimeFormat("en-GB", {
         timeZone: "Asia/Dhaka",
@@ -447,6 +514,107 @@ export default function CourierClient({
             </div>
           </div>
 
+          {/* ---------------- auto-sync ---------------- */}
+          <div className="bg-white rounded-3xl border border-gray-100 shadow-[0_4px_18px_rgba(17,18,28,0.05)] overflow-hidden">
+            <div className="flex items-center gap-2.5 px-4 md:px-5 py-4 border-b border-gray-100">
+              <span className="grad-bg text-white rounded-xl p-2 shrink-0">
+                <Timer size={15} />
+              </span>
+              <h3 className="font-display font-extrabold text-[15px]">Auto-sync</h3>
+              <span
+                className={`ml-auto text-[9px] font-extrabold tracking-wider px-2 py-1 rounded-md uppercase ring-1 ${
+                  cfg.autoSync
+                    ? "bg-emerald-50 text-emerald-600 ring-emerald-100"
+                    : "bg-gray-100 text-gray-500 ring-gray-200"
+                }`}
+              >
+                {cfg.autoSync ? "On" : "Paused"}
+              </span>
+            </div>
+
+            <div className="p-4 md:p-5">
+              <p className="text-[12.5px] font-semibold text-gray-500 leading-relaxed">
+                Every 15 minutes the site asks the courier what happened to each parcel still in transit. Delivered
+                and cancelled parcels move your order status on their own — no clicking.
+              </p>
+
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <div className="rounded-2xl bg-[#fafafc] border border-gray-100 px-3 py-2.5">
+                  <p className="font-display text-[20px] font-extrabold text-gray-800 leading-none">
+                    {pendingParcels}
+                  </p>
+                  <p className="mt-1 text-[10px] font-extrabold uppercase tracking-wider text-gray-400">in transit</p>
+                </div>
+                <div className="rounded-2xl bg-[#fafafc] border border-gray-100 px-3 py-2.5">
+                  <p className="font-display text-[20px] font-extrabold text-gray-800 leading-none">
+                    {cfg.lastSyncCount ?? "—"}
+                  </p>
+                  <p className="mt-1 text-[10px] font-extrabold uppercase tracking-wider text-gray-400">
+                    last pass
+                  </p>
+                </div>
+              </div>
+
+              <p className="mt-2.5 text-[11.5px] font-bold text-gray-400">
+                {syncedAt ? `Last sync ${syncedAt}` : "Has not run yet"}
+              </p>
+
+              {lastSync && !lastSync.skipped && (
+                <p className="mt-2 text-[11.5px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-2xl px-3.5 py-2.5">
+                  Checked {lastSync.checked} · {lastSync.statusChanged} updated · {lastSync.ordersMoved} order(s)
+                  moved
+                  {lastSync.failed > 0 && ` · ${lastSync.failed} failed`}
+                  {lastSync.remaining > 0 && ` · ${lastSync.remaining} left for the next pass`}
+                </p>
+              )}
+
+              {cfg.lastSyncError && (
+                <p className="mt-2 flex items-start gap-2 text-[11.5px] font-bold text-rose-600 bg-rose-50 border border-rose-100 rounded-2xl px-3.5 py-2.5">
+                  <AlertTriangle size={14} className="shrink-0 mt-[1px]" />
+                  <span>Last sync hit a problem: {cfg.lastSyncError}</span>
+                </p>
+              )}
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  onClick={syncNow}
+                  disabled={syncing || !connected}
+                  className="flex-1 min-w-[140px] inline-flex items-center justify-center gap-2 grad-bg text-white rounded-2xl px-4 py-2.5 text-[12.5px] font-extrabold hover:opacity-90 transition disabled:opacity-50"
+                >
+                  {syncing ? <Loader2 size={15} className="animate-spin" /> : <RotateCw size={15} />}
+                  Sync now
+                </button>
+                <button
+                  onClick={toggleAutoSync}
+                  disabled={togglingSync || !cfg.hasKeys}
+                  className="flex-1 min-w-[140px] inline-flex items-center justify-center gap-2 rounded-2xl border-[1.5px] border-gray-200 px-4 py-2.5 text-[12.5px] font-extrabold text-gray-700 hover:border-[var(--g1)] hover:text-[var(--g2)] transition disabled:opacity-50"
+                >
+                  {togglingSync ? <Loader2 size={15} className="animate-spin" /> : <Timer size={15} />}
+                  {cfg.autoSync ? "Pause" : "Resume"}
+                </button>
+              </div>
+
+              <p className="mt-3 flex items-start gap-2 text-[11.5px] font-semibold text-gray-400 leading-relaxed">
+                <Info size={13} className="shrink-0 mt-[2px]" />
+                <span>
+                  The 15-minute schedule only runs on the live site, not on a deploy preview — Netlify behaves that
+                  way for every scheduled function. Sync now works everywhere.
+                </span>
+              </p>
+
+              {!cronSecretSet && (
+                <p className="mt-2 flex items-start gap-2 text-[11.5px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-2xl px-3.5 py-2.5">
+                  <AlertTriangle size={14} className="shrink-0 mt-[1px]" />
+                  <span>
+                    No <code className="font-mono">CRON_SECRET</code> or <code className="font-mono">AUTH_SECRET</code>{" "}
+                    is set, so the sync endpoint accepts unsigned calls. It only ever returns counts and refuses to run
+                    more than once a minute, but setting either variable in Netlify closes it off properly.
+                  </span>
+                </p>
+              )}
+            </div>
+          </div>
+
           <div className="bg-white rounded-3xl border border-gray-100 shadow-[0_4px_18px_rgba(17,18,28,0.05)] overflow-hidden">
             <div className="flex items-center gap-2.5 px-4 md:px-5 py-4 border-b border-gray-100">
               <span className="grad-bg text-white rounded-xl p-2 shrink-0">
@@ -463,6 +631,8 @@ export default function CourierClient({
                 "An order already sent can never be sent twice",
                 "Refresh delivery status from the order page",
                 "Real courier fraud check on the order page",
+                "Delivery status synced automatically every 15 minutes",
+                "Compact shipping labels, many to a page",
               ].map((t) => (
                 <li key={t} className="flex items-start gap-2 text-[12px] font-semibold text-gray-600">
                   <Check size={13} className="text-emerald-500 shrink-0 mt-[2px]" />
@@ -471,7 +641,10 @@ export default function CourierClient({
               ))}
               <li className="flex items-start gap-2 text-[12px] font-semibold text-gray-400 pt-1 border-t border-gray-50 mt-2">
                 <X size={13} className="shrink-0 mt-[2px]" />
-                <span className="min-w-0">Background auto-sync (cron / webhook) — next step</span>
+                <span className="min-w-0">
+                  Pickup requests, return requests and payment reconciliation — available in the courier API, not
+                  built yet
+                </span>
               </li>
             </ul>
           </div>
