@@ -131,6 +131,29 @@ export const orderStatuses = pgTable("order_statuses", {
   isActive: boolean("is_active").notNull().default(true),
 });
 
+/**
+ * One-row courier provider configuration, edited on /admin/api.
+ * `apiKey` / `secretKey` are stored encrypted (see `src/lib/courier-crypto.ts`)
+ * and are never sent back to the browser in full.
+ */
+export const courierConfig = pgTable("courier_config", {
+  id: serial("id").primaryKey(),
+  /** Only "steadfast" today — the column exists so a second courier can be added. */
+  provider: text("provider").notNull().default("steadfast"),
+  baseUrl: text("base_url").notNull().default("https://portal.packzy.com/api/v1"),
+  apiKey: text("api_key").notNull().default(""),
+  secretKey: text("secret_key").notNull().default(""),
+  /** Master switch — off means the Courier buttons stay disabled. */
+  isActive: boolean("is_active").notNull().default(false),
+  /** Order status key an order moves to right after a successful send. */
+  sentStatusKey: text("sent_status_key").notNull().default("confirmed"),
+  /** Cached balance so the panel can show a number without calling out every render. */
+  lastBalance: integer("last_balance"),
+  lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
+  /** Last connection-test result, shown on the API page. */
+  lastError: text("last_error").notNull().default(""),
+});
+
 export const admins = pgTable("admins", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().default(""),
@@ -171,6 +194,14 @@ export const orders = pgTable("orders", {
   status: text("status").notNull().default("pending"),
   /** Visitor IP captured at checkout — used by the admin fraud panel. */
   customerIp: text("customer_ip"),
+  /* ---- courier (STEP 8) ---- */
+  /** Set once the parcel is booked — its presence is what blocks a second send. */
+  courierConsignmentId: text("courier_consignment_id"),
+  courierTrackingCode: text("courier_tracking_code"),
+  courierTrackingLink: text("courier_tracking_link"),
+  /** Raw delivery_status from the courier, refreshed on demand. */
+  courierStatus: text("courier_status"),
+  courierSentAt: timestamp("courier_sent_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -185,6 +216,7 @@ export type Category = typeof categories.$inferSelect;
 export type Product = typeof products.$inferSelect;
 export type DeliveryArea = typeof deliveryAreas.$inferSelect;
 export type OrderStatusRow = typeof orderStatuses.$inferSelect;
+export type CourierConfigRow = typeof courierConfig.$inferSelect;
 export type Customer = typeof customers.$inferSelect;
 export type Order = typeof orders.$inferSelect;
 

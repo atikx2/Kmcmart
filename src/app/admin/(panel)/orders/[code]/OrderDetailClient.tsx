@@ -12,6 +12,7 @@ import {
   CircleDot,
   ClipboardList,
   Clock,
+  ExternalLink,
   Globe,
   Loader2,
   MapPin,
@@ -19,8 +20,11 @@ import {
   Pencil,
   Phone,
   Plus,
+  PackageX,
   Printer,
+  RefreshCw,
   ReceiptText,
+  Send,
   ShieldAlert,
   ShoppingBag,
   Trash2,
@@ -41,6 +45,15 @@ import {
   type OrderStatus,
   type OrderStatusOption,
 } from "@/lib/order-status";
+import {
+  COURIER_TONE_CHIP,
+  courierStatusLabel,
+  courierStatusTone,
+  fraudCategoryLabel,
+  VOLUME_BAND_LABEL,
+  type CourierFraudReport,
+  type CourierSendResult,
+} from "@/lib/courier";
 import type { OrderItem } from "@/db/schema";
 import ConfirmModal from "@/components/admin/ConfirmModal";
 import Toast, { useToast } from "@/components/admin/Toast";
@@ -113,10 +126,13 @@ function Row({
 export default function OrderDetailClient({
   order,
   statuses,
+  courierOn,
   startInEdit = false,
 }: {
   order: AdminOrderDetail;
   statuses: OrderStatusOption[];
+  /** Courier connected and switched on — set on the API page. */
+  courierOn: boolean;
   startInEdit?: boolean;
 }) {
   const router = useRouter();
@@ -170,6 +186,92 @@ export default function OrderDetailClient({
       showToast("err", e instanceof Error ? e.message : "Could not update status");
     } finally {
       setSaving(null);
+    }
+  };
+
+  /* ---------- courier ---------- */
+  const [courier, setCourier] = useState({
+    consignmentId: order.courierConsignmentId,
+    trackingCode: order.courierTrackingCode,
+    trackingLink: order.courierTrackingLink,
+    courierStatus: order.courierStatus,
+    sentAt: order.courierSentAt,
+  });
+  const [sending, setSending] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [checkingFraud, setCheckingFraud] = useState(false);
+  const [report, setReport] = useState<CourierFraudReport | null>(null);
+
+  const sendToCourier = async () => {
+    if (courier.consignmentId || sending) return;
+    setSending(true);
+    try {
+      const res = await fetch("/api/admin/courier/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [order.id] }),
+      });
+      const json = (await res.json()) as { error?: string; results?: CourierSendResult[] };
+      if (!res.ok) throw new Error(json.error || "Could not send to the courier");
+      const r = json.results?.[0];
+      if (!r?.ok) throw new Error(r?.error ?? "Courier refused the parcel");
+      setCourier({
+        consignmentId: r.consignmentId ?? null,
+        trackingCode: r.trackingCode ?? null,
+        trackingLink: r.trackingLink ?? null,
+        courierStatus: "in_review",
+        sentAt: null,
+      });
+      showToast("ok", `Booked — consignment ${r.consignmentId}`);
+      router.refresh();
+    } catch (e) {
+      showToast("err", e instanceof Error ? e.message : "Could not send to the courier");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const syncCourier = async () => {
+    if (!courier.consignmentId || syncing) return;
+    setSyncing(true);
+    try {
+      const res = await fetch("/api/admin/courier/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [order.id] }),
+      });
+      const json = (await res.json()) as {
+        error?: string;
+        rows?: { courierStatus: string | null; error?: string }[];
+      };
+      if (!res.ok) throw new Error(json.error || "Could not refresh");
+      const row = json.rows?.[0];
+      if (row?.error) throw new Error(row.error);
+      setCourier((c) => ({ ...c, courierStatus: row?.courierStatus ?? c.courierStatus }));
+      showToast("ok", `Courier says: ${courierStatusLabel(row?.courierStatus)}`);
+      router.refresh();
+    } catch (e) {
+      showToast("err", e instanceof Error ? e.message : "Could not refresh");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const runFraudCheck = async () => {
+    if (checkingFraud) return;
+    setCheckingFraud(true);
+    try {
+      const res = await fetch(`/api/admin/courier/fraud?phone=${encodeURIComponent(order.phone)}`, {
+        cache: "no-store",
+      });
+      const json = (await res.json()) as { error?: string; report?: CourierFraudReport };
+      if (!res.ok || !json.report) throw new Error(json.error || "Fraud check failed");
+      setReport(json.report);
+      showToast("ok", "Courier history loaded");
+    } catch (e) {
+      showToast("err", e instanceof Error ? e.message : "Fraud check failed");
+    } finally {
+      setCheckingFraud(false);
     }
   };
 
@@ -660,6 +762,106 @@ export default function OrderDetailClient({
             </p>
           </div>
 
+          {/* ---------- courier ---------- */}
+          <div className="bg-white rounded-3xl border border-gray-100 shadow-[0_4px_18px_rgba(17,18,28,0.05)] p-4 md:p-6">
+            <h3 className="font-display font-extrabold text-base md:text-lg flex items-center gap-2.5 mb-4">
+              <span className="grad-bg text-white rounded-xl p-2">
+                <Truck size={15} />
+              </span>
+              Courier
+              {courier.consignmentId && (
+                <span
+                  className={`ml-auto text-[9.5px] font-extrabold uppercase tracking-wider px-2 py-[5px] rounded-full ring-1 ${
+                    COURIER_TONE_CHIP[courierStatusTone(courier.courierStatus)]
+                  }`}
+                >
+                  {courierStatusLabel(courier.courierStatus)}
+                </span>
+              )}
+            </h3>
+
+            {courier.consignmentId ? (
+              <>
+                <dl className="space-y-2">
+                  <div className="flex items-center justify-between gap-3 bg-gray-50 rounded-2xl px-4 py-2.5">
+                    <dt className="text-[11px] font-extrabold uppercase tracking-wider text-gray-400">Consignment</dt>
+                    <dd className="text-[13px] font-extrabold text-gray-800 font-mono">{courier.consignmentId}</dd>
+                  </div>
+                  {courier.trackingCode && (
+                    <div className="flex items-center justify-between gap-3 bg-gray-50 rounded-2xl px-4 py-2.5">
+                      <dt className="text-[11px] font-extrabold uppercase tracking-wider text-gray-400">Tracking</dt>
+                      <dd className="text-[13px] font-extrabold text-gray-800 font-mono">{courier.trackingCode}</dd>
+                    </div>
+                  )}
+                  {courier.sentAt && (
+                    <div className="flex items-center justify-between gap-3 bg-gray-50 rounded-2xl px-4 py-2.5">
+                      <dt className="text-[11px] font-extrabold uppercase tracking-wider text-gray-400">Sent</dt>
+                      <dd className="text-[12.5px] font-bold text-gray-600">{courier.sentAt}</dd>
+                    </div>
+                  )}
+                </dl>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    onClick={syncCourier}
+                    disabled={syncing}
+                    className="flex-1 min-w-[150px] inline-flex items-center justify-center gap-2 rounded-2xl border-[1.5px] border-gray-200 px-4 py-2.5 text-[12.5px] font-extrabold text-gray-700 hover:border-[var(--g1)] hover:text-[var(--g2)] transition disabled:opacity-60"
+                  >
+                    {syncing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                    Refresh status
+                  </button>
+                  {courier.trackingLink && (
+                    <a
+                      href={courier.trackingLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 min-w-[150px] inline-flex items-center justify-center gap-2 rounded-2xl bg-sky-50 border-[1.5px] border-sky-200 px-4 py-2.5 text-[12.5px] font-extrabold text-sky-600 hover:bg-sky-100 transition"
+                    >
+                      <ExternalLink size={14} />
+                      Track parcel
+                    </a>
+                  )}
+                </div>
+
+                <p className="mt-3 text-[11.5px] font-semibold text-gray-400 leading-relaxed">
+                  Booked at the courier — it cannot be sent again from here. Anything ending &ldquo;unconfirmed&rdquo;
+                  is the rider&apos;s word, not the courier&apos;s accounts team; wait for the confirmed status before
+                  settling your books.
+                </p>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={sendToCourier}
+                  disabled={!courierOn || sending}
+                  title={courierOn ? "" : "Courier is not connected — set it up on the API page"}
+                  className="w-full inline-flex items-center justify-center gap-2 grad-bg text-white rounded-2xl px-4 py-3 text-[12.5px] font-extrabold hover:opacity-90 transition disabled:opacity-50"
+                >
+                  {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+                  Send to courier
+                </button>
+                <p className="mt-3 flex items-start gap-2 text-[11.5px] font-semibold text-gray-400 leading-relaxed">
+                  {courierOn ? (
+                    <>
+                      <Truck size={13} className="shrink-0 mt-[2px]" />
+                      <span>
+                        Books a real parcel with {taka(order.total)} cash on delivery and moves this order to the
+                        status you picked on the API page.
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <PackageX size={13} className="shrink-0 mt-[2px]" />
+                      <span>
+                        Courier is not connected. Add the keys on Admin → API and switch it on.
+                      </span>
+                    </>
+                  )}
+                </p>
+              </>
+            )}
+          </div>
+
           <div className="bg-white rounded-3xl border border-gray-100 shadow-[0_4px_18px_rgba(17,18,28,0.05)] p-4 md:p-6">
             <h3 className="font-display font-extrabold text-base md:text-lg flex items-center gap-2.5 mb-4">
               <span className="grad-bg text-white rounded-xl p-2">
@@ -680,8 +882,71 @@ export default function OrderDetailClient({
             </div>
             <p className="mt-2.5 text-[11.5px] font-semibold text-gray-400 leading-relaxed">
               {fraud.delivered} delivered · {fraud.cancelled} cancelled · {fraud.totalOrders} total orders from{" "}
-              {order.phone}. Based on this store&apos;s own delivery history — a courier fraud API can replace it later.
+              {order.phone}. This store&apos;s own history only.
             </p>
+
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              {report ? (
+                <>
+                  <p className="text-[10.5px] font-extrabold uppercase tracking-wider text-gray-400 mb-2.5">
+                    Courier-wide record
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-2xl bg-emerald-50 ring-1 ring-emerald-100 px-3 py-2.5">
+                      <p className="font-display text-[20px] font-extrabold text-emerald-600 leading-none">
+                        {report.deliveryRatio === null ? "—" : `${report.deliveryRatio}%`}
+                      </p>
+                      <p className="mt-1 text-[10px] font-extrabold uppercase tracking-wider text-emerald-600/70">
+                        delivered
+                      </p>
+                    </div>
+                    <div className="rounded-2xl bg-rose-50 ring-1 ring-rose-100 px-3 py-2.5">
+                      <p className="font-display text-[20px] font-extrabold text-rose-500 leading-none">
+                        {report.cancellationRatio === null ? "—" : `${report.cancellationRatio}%`}
+                      </p>
+                      <p className="mt-1 text-[10px] font-extrabold uppercase tracking-wider text-rose-500/70">
+                        cancelled
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="mt-2.5 text-[11.5px] font-bold text-gray-500">
+                    {report.volumeBand ? (VOLUME_BAND_LABEL[report.volumeBand] ?? report.volumeBand) : "Volume unknown"}
+                    {" · "}
+                    {report.totalReports} report{report.totalReports === 1 ? "" : "s"}
+                  </p>
+
+                  {report.fraudCategories.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {report.fraudCategories.map((c) => (
+                        <span
+                          key={c.code}
+                          className="text-[10px] font-extrabold bg-amber-50 text-amber-700 ring-1 ring-amber-100 px-2 py-1 rounded-lg"
+                        >
+                          {fraudCategoryLabel(c.code)} × {c.count}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <p className="mt-2.5 text-[11px] font-semibold text-gray-400 leading-relaxed">
+                    {report.deliveryRatio === null
+                      ? "Nothing has finished for this number yet — that is not a clean record, it is no record."
+                      : "Percentages of this customer's finished parcels across every merchant. A signal, not a verdict."}
+                  </p>
+                </>
+              ) : (
+                <button
+                  onClick={runFraudCheck}
+                  disabled={!courierOn || checkingFraud}
+                  title={courierOn ? "" : "Courier is not connected — set it up on the API page"}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-2xl border-[1.5px] border-gray-200 px-4 py-2.5 text-[12.5px] font-extrabold text-gray-700 hover:border-[var(--g1)] hover:text-[var(--g2)] transition disabled:opacity-50"
+                >
+                  {checkingFraud ? <Loader2 size={14} className="animate-spin" /> : <ShieldAlert size={14} />}
+                  Check with the courier
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

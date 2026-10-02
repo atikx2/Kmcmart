@@ -94,6 +94,11 @@ export async function listAdminOrders(opts: {
         createdAt: orders.createdAt,
         items: orders.items,
         itemsCount: itemsCountSql,
+        courierConsignmentId: orders.courierConsignmentId,
+        courierTrackingCode: orders.courierTrackingCode,
+        courierTrackingLink: orders.courierTrackingLink,
+        courierStatus: orders.courierStatus,
+        courierSentAt: orders.courierSentAt,
       })
       .from(orders)
       .where(where)
@@ -135,6 +140,11 @@ export async function listAdminOrders(opts: {
     status: r.status,
     date: formatOrderDateTime(r.createdAt),
     fraud: fraudMap.get(r.phone) ?? fraudScore(0, 0, 0),
+    courierConsignmentId: r.courierConsignmentId,
+    courierTrackingCode: r.courierTrackingCode,
+    courierTrackingLink: r.courierTrackingLink,
+    courierStatus: r.courierStatus,
+    courierSentAt: r.courierSentAt ? formatOrderDateTime(r.courierSentAt) : null,
   }));
 
   return { items, total, counts, offset, limit, hasMore: offset + rows.length < total };
@@ -160,6 +170,11 @@ export async function getAdminOrderByCode(code: string): Promise<AdminOrderDetai
     items: o.items ?? [],
     placedAt: formatOrderDateTime(o.createdAt),
     fraud: fraudMap.get(o.phone) ?? fraudScore(0, 0, 0),
+    courierConsignmentId: o.courierConsignmentId,
+    courierTrackingCode: o.courierTrackingCode,
+    courierTrackingLink: o.courierTrackingLink,
+    courierStatus: o.courierStatus,
+    courierSentAt: o.courierSentAt ? formatOrderDateTime(o.courierSentAt) : null,
   };
 }
 
@@ -187,5 +202,10 @@ export async function getAdminOrdersByIds(ids: number[]): Promise<AdminOrderDeta
     items: o.items ?? [],
     placedAt: formatOrderDateTime(o.createdAt),
     fraud: fraudScore(0, 0, 0),
+    courierConsignmentId: o.courierConsignmentId,
+    courierTrackingCode: o.courierTrackingCode,
+    courierTrackingLink: o.courierTrackingLink,
+    courierStatus: o.courierStatus,
+    courierSentAt: o.courierSentAt ? formatOrderDateTime(o.courierSentAt) : null,
   }));
 }

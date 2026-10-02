@@ -193,6 +193,14 @@ export type AdminOrderRow = {
   status: string;
   date: string;
   fraud: FraudScore;
+  /* ---- courier (STEP 8) ---- */
+  /** Null until the parcel is booked — its presence blocks a second send. */
+  courierConsignmentId: string | null;
+  courierTrackingCode: string | null;
+  courierTrackingLink: string | null;
+  /** Raw `delivery_status` from the courier. */
+  courierStatus: string | null;
+  courierSentAt: string | null;
 };
 
 /** `all` plus one entry per status key that actually has orders. */
@@ -222,6 +230,14 @@ export type AdminOrderDetail = {
   items: OrderItem[];
   placedAt: string;
   fraud: FraudScore;
+  /* ---- courier (STEP 8) ---- */
+  /** Null until the parcel is booked — its presence blocks a second send. */
+  courierConsignmentId: string | null;
+  courierTrackingCode: string | null;
+  courierTrackingLink: string | null;
+  /** Raw `delivery_status` from the courier. */
+  courierStatus: string | null;
+  courierSentAt: string | null;
 };
 
 /** Fields the admin may edit on an order. */

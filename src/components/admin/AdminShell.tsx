@@ -87,7 +87,7 @@ const NAV: NavEntry[] = [
   { href: "/admin/customers", label: "Customers", icon: Users, perm: "customers" },
   { section: "System" },
   { href: "/admin/reports", label: "Report", icon: ChartColumn, perm: "reports" },
-  { href: "/admin/api", label: "API", icon: Webhook, soon: true, perm: "api" },
+  { href: "/admin/api", label: "API", icon: Webhook, perm: "api" },
   { href: "/admin/roles", label: "Roles", icon: ShieldCheck, perm: "roles" },
   { href: "/admin/settings", label: "Site Settings", icon: Settings, perm: "settings" },
 ];

@@ -1,17 +1,10 @@
 import type { Metadata } from "next";
-import {
-  CheckCircle2,
-  FileText,
-  Info,
-  KeyRound,
-  Link2,
-  MessageSquare,
-  ShieldAlert,
-  Truck,
-  Webhook,
-} from "lucide-react";
+import { CheckCircle2, FileText, Info, KeyRound, Link2, MessageSquare, Wallet, Webhook } from "lucide-react";
 import type { IconCmp } from "@/components/admin/table-ui";
 import { requirePermission } from "@/lib/admin-guard";
+import { courierSummary, loadCourierConfig, toPublicConfig } from "@/lib/admin-courier";
+import { listOrderStatuses } from "@/lib/admin-order-statuses";
+import CourierClient from "./CourierClient";
 
 export const metadata: Metadata = { title: "API · Admin" };
 export const dynamic = "force-dynamic";
@@ -26,40 +19,8 @@ type Integration = {
   fields: { label: string; placeholder: string; icon: IconCmp }[];
 };
 
-const INTEGRATIONS: Integration[] = [
-  {
-    key: "courier",
-    icon: Truck,
-    title: "Courier API",
-    tagline: "Push confirmed orders straight to the courier and pull delivery status back.",
-    providers: ["Steadfast", "Pathao", "RedX", "eCourier"],
-    willDo: [
-      "Send selected orders as consignments in one click",
-      "Store the consignment / tracking id on the order",
-      "Auto-update status when the courier marks it delivered or returned",
-    ],
-    fields: [
-      { label: "Base URL", placeholder: "https://portal.courier.com/api/v1", icon: Link2 },
-      { label: "API key", placeholder: "••••••••••••••••", icon: KeyRound },
-      { label: "Secret key", placeholder: "••••••••••••••••", icon: KeyRound },
-    ],
-  },
-  {
-    key: "fraud",
-    icon: ShieldAlert,
-    title: "Fraud Check API",
-    tagline: "Look up a phone number's delivery / return history before confirming an order.",
-    providers: ["BD Courier", "Fraud Checker BD"],
-    willDo: [
-      "Real courier-wide success ratio instead of the in-house score",
-      "Risk badge on the order list and the order detail page",
-      "Auto-flag repeat returners before you confirm",
-    ],
-    fields: [
-      { label: "Base URL", placeholder: "https://api.fraudcheck.bd/v1", icon: Link2 },
-      { label: "API token", placeholder: "••••••••••••••••", icon: KeyRound },
-    ],
-  },
+/** Still waiting on provider docs — the courier card above is the live one. */
+const SOON: Integration[] = [
   {
     key: "sms",
     icon: MessageSquare,
@@ -77,10 +38,34 @@ const INTEGRATIONS: Integration[] = [
       { label: "Sender ID", placeholder: "KMCMART", icon: FileText },
     ],
   },
+  {
+    key: "payment",
+    icon: Wallet,
+    title: "Payment Gateway",
+    tagline: "Take payment online instead of cash on delivery.",
+    providers: ["bKash", "Nagad", "SSLCommerz", "ShurjoPay"],
+    willDo: [
+      "Pay-now option beside cash on delivery at checkout",
+      "Payment status stored on the order",
+      "Automatic refund request on a cancelled order",
+    ],
+    fields: [
+      { label: "Base URL", placeholder: "https://tokenized.pay.bka.sh/v1.2.0-beta", icon: Link2 },
+      { label: "App key", placeholder: "••••••••••••••••", icon: KeyRound },
+      { label: "App secret", placeholder: "••••••••••••••••", icon: KeyRound },
+    ],
+  },
 ];
 
 export default async function AdminApiPage() {
   await requirePermission("api");
+
+  const [{ row, ready }, statuses, summary] = await Promise.all([
+    loadCourierConfig(),
+    listOrderStatuses(),
+    courierSummary(),
+  ]);
+
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-3xl border border-gray-100 shadow-[0_4px_18px_rgba(17,18,28,0.05)] p-4 md:p-5">
@@ -89,16 +74,10 @@ export default async function AdminApiPage() {
             <Webhook size={18} strokeWidth={2.3} />
           </span>
           <div className="min-w-0">
-            <h2 className="font-display font-extrabold text-base md:text-lg flex flex-wrap items-center gap-2">
-              Third-party integrations
-              <span className="text-[9px] font-extrabold tracking-wider bg-gray-100 text-gray-500 px-2 py-1 rounded-md uppercase">
-                Soon
-              </span>
-            </h2>
+            <h2 className="font-display font-extrabold text-base md:text-lg">Third-party integrations</h2>
             <p className="text-[12.5px] font-semibold text-gray-500 mt-1 leading-relaxed">
-              The layout below is the real thing — only the save buttons are switched off. Send the provider docs
-              (endpoint, auth header, payload sample) and each card gets wired up one by one, without touching anything
-              else in the panel.
+              The courier is live. Send the docs for any other provider and its card gets wired up the same way,
+              without touching anything else in the panel.
             </p>
           </div>
         </div>
@@ -106,14 +85,16 @@ export default async function AdminApiPage() {
         <p className="mt-3.5 flex items-start gap-2 text-[11.5px] font-bold text-sky-700 bg-sky-50 border border-sky-100 rounded-2xl px-3.5 py-2.5">
           <Info size={14} className="shrink-0 mt-[1px]" />
           <span>
-            Keys are never stored in the code — they go into environment variables, so a leaked repo cannot leak your
-            courier account.
+            Keys are never written into the code. They are typed here, encrypted, and stored in your own database — a
+            leaked repository cannot leak your courier account.
           </span>
         </p>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
-        {INTEGRATIONS.map((it) => {
+      <CourierClient initial={toPublicConfig(row)} ready={ready} statuses={statuses} summary={summary} />
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+        {SOON.map((it) => {
           const Icon = it.icon;
           return (
             <section

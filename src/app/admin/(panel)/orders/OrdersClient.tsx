@@ -24,6 +24,7 @@ import {
   PackageCheck,
   PackageSearch,
   Pencil,
+  PackageX,
   PhoneCall,
   Printer,
   ReceiptText,
@@ -34,6 +35,7 @@ import {
   ShieldQuestionMark,
   ShoppingBasket,
   ShoppingCart,
+  Send,
   Trash2,
   Truck,
   User,
@@ -55,6 +57,7 @@ import {
   type OrderStatus,
   type OrderStatusOption,
 } from "@/lib/order-status";
+import { COURIER_TONE_CHIP, courierStatusLabel, courierStatusTone, type CourierSendResult } from "@/lib/courier";
 import ConfirmModal from "@/components/admin/ConfirmModal";
 import InlineEdit from "@/components/admin/InlineEdit";
 import Toast, { useToast } from "@/components/admin/Toast";
@@ -205,13 +208,25 @@ const ACTION_BTN =
 
 function ActionPad({
   code,
+  courierState,
+  busy,
   onCourier,
   onDelete,
 }: {
   code: string;
+  /** "sent" locks the button for good — a parcel is never booked twice. */
+  courierState: "sent" | "ready" | "off";
+  busy: boolean;
   onCourier: () => void;
   onDelete: () => void;
 }) {
+  const courierTitle =
+    courierState === "sent"
+      ? "Already sent to the courier"
+      : courierState === "off"
+        ? "Courier is not connected — set it up on the API page"
+        : "Send this order to the courier";
+
   return (
     <div className="inline-grid grid-cols-2 gap-1.5 p-1.5 rounded-2xl bg-[#fafafc] border border-gray-100">
       <Link
@@ -230,10 +245,25 @@ function ActionPad({
       </Link>
       <button
         onClick={onCourier}
-        title="Send to courier (coming soon)"
-        className={`${ACTION_BTN} bg-sky-50 text-sky-500 hover:bg-sky-500 hover:text-white`}
+        disabled={busy || courierState !== "ready"}
+        title={courierTitle}
+        className={`${ACTION_BTN} ${
+          courierState === "sent"
+            ? "bg-emerald-50 text-emerald-500 cursor-not-allowed shadow-none hover:translate-y-0 hover:shadow-none"
+            : courierState === "off"
+              ? "bg-gray-100 text-gray-300 cursor-not-allowed shadow-none hover:translate-y-0 hover:shadow-none"
+              : "bg-sky-50 text-sky-500 hover:bg-sky-500 hover:text-white"
+        }`}
       >
-        <Truck size={14} strokeWidth={2.4} />
+        {busy ? (
+          <Loader2 size={13} className="animate-spin" />
+        ) : courierState === "sent" ? (
+          <PackageCheck size={14} strokeWidth={2.4} />
+        ) : courierState === "off" ? (
+          <PackageX size={14} strokeWidth={2.4} />
+        ) : (
+          <Truck size={14} strokeWidth={2.4} />
+        )}
       </button>
       <button
         onClick={onDelete}
@@ -293,9 +323,12 @@ function ItemTiles({ items, count }: { items: AdminOrderRow["items"]; count: num
 export default function OrdersClient({
   initial,
   statuses,
+  courierOn,
 }: {
   initial: AdminOrderList;
   statuses: OrderStatusOption[];
+  /** Courier connected and switched on — set on the API page. */
+  courierOn: boolean;
 }) {
   const router = useRouter();
   const [toast, showToast] = useToast();
@@ -327,6 +360,8 @@ export default function OrdersClient({
   const [toDelete, setToDelete] = useState<AdminOrderRow | null>(null);
   const [bulkDelete, setBulkDelete] = useState(false);
   const [working, setWorking] = useState(false);
+  const [courierBusy, setCourierBusy] = useState<number | null>(null);
+  const [bulkCourier, setBulkCourier] = useState(false);
 
   const firstRender = useRef(true);
   const reqId = useRef(0);
@@ -470,8 +505,86 @@ export default function OrdersClient({
     window.open(`/admin/print?ids=${ids.join(",")}`, "_blank", "noopener");
   };
 
-  const courierNotice = () =>
-    showToast("err", "Courier API is not connected yet — share the API docs and this will start sending parcels.");
+  /* ---------- courier ---------- */
+  const applySendResults = (results: CourierSendResult[]) => {
+    setData((d) => ({
+      ...d,
+      items: d.items.map((o) => {
+        const r = results.find((x) => x.orderId === o.id && x.ok);
+        if (!r) return o;
+        return {
+          ...o,
+          courierConsignmentId: r.consignmentId ?? o.courierConsignmentId,
+          courierTrackingCode: r.trackingCode ?? o.courierTrackingCode,
+          courierTrackingLink: r.trackingLink ?? o.courierTrackingLink,
+          courierStatus: o.courierStatus ?? "in_review",
+        };
+      }),
+    }));
+  };
+
+  const postSend = async (ids: number[]) => {
+    const res = await fetch("/api/admin/courier/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || "Could not send to the courier");
+    return json as { sent: number; failed: number; results: CourierSendResult[] };
+  };
+
+  const sendOne = async (o: AdminOrderRow) => {
+    if (o.courierConsignmentId || !courierOn) return;
+    setCourierBusy(o.id);
+    try {
+      const json = await postSend([o.id]);
+      applySendResults(json.results);
+      const r = json.results[0];
+      if (r?.ok) showToast("ok", `#${o.code} booked — consignment ${r.consignmentId}`);
+      else showToast("err", r?.error ?? "Courier refused the parcel");
+      await refresh();
+      router.refresh();
+    } catch (e) {
+      showToast("err", e instanceof Error ? e.message : "Could not send to the courier");
+    } finally {
+      setCourierBusy(null);
+    }
+  };
+
+  const sendSelected = async () => {
+    const ids = data.items.filter((o) => selected.includes(o.id) && !o.courierConsignmentId).map((o) => o.id);
+    if (ids.length === 0) {
+      setBulkCourier(false);
+      showToast("err", "Every selected order has already been sent");
+      return;
+    }
+    setWorking(true);
+    try {
+      const json = await postSend(ids);
+      applySendResults(json.results);
+      setBulkCourier(false);
+      const firstError = json.results.find((r) => !r.ok)?.error;
+      if (json.sent > 0) {
+        showToast(
+          "ok",
+          json.failed > 0
+            ? `${json.sent} sent, ${json.failed} failed — ${firstError ?? ""}`
+            : `${json.sent} order(s) sent to the courier`
+        );
+      } else {
+        showToast("err", firstError ?? "Nothing could be sent");
+      }
+      await refresh();
+      router.refresh();
+    } catch (e) {
+      showToast("err", e instanceof Error ? e.message : "Bulk courier send failed");
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const selectedUnsent = data.items.filter((o) => selected.includes(o.id) && !o.courierConsignmentId).length;
 
   const totalPages = Math.max(1, Math.ceil(data.total / limit));
   const from = data.total === 0 ? 0 : page * limit + 1;
@@ -580,16 +693,22 @@ export default function OrdersClient({
           </button>
 
           <button
-            onClick={() => (selected.length === 0 ? undefined : courierNotice())}
-            disabled={selected.length === 0}
-            title="Courier API not connected yet"
-            className="flex items-center gap-1.5 rounded-xl border-[1.5px] border-gray-200 px-3 py-2.5 text-[12px] font-extrabold text-gray-700 hover:border-sky-400 hover:text-sky-600 transition disabled:opacity-45 disabled:hover:border-gray-200 disabled:hover:text-gray-700"
+            onClick={() => setBulkCourier(true)}
+            disabled={selected.length === 0 || !courierOn || working}
+            title={
+              courierOn
+                ? "Book the selected orders as courier parcels"
+                : "Courier is not connected — set it up on the API page"
+            }
+            className="flex items-center gap-1.5 rounded-xl border-[1.5px] border-sky-200 bg-sky-50 px-3 py-2.5 text-[12px] font-extrabold text-sky-600 hover:bg-sky-100 transition disabled:opacity-45"
           >
-            <Truck size={14} />
-            Courier Sent
-            <span className="text-[8.5px] font-extrabold tracking-wider bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-md">
-              SOON
-            </span>
+            <Send size={14} />
+            Send to Courier
+            {selectedUnsent > 0 && (
+              <span className="text-[9.5px] font-extrabold bg-white text-sky-600 ring-1 ring-sky-200 px-1.5 py-0.5 rounded-md">
+                {selectedUnsent}
+              </span>
+            )}
           </button>
 
           <button
@@ -752,6 +871,21 @@ export default function OrdersClient({
                               <InfoChip icon={Fingerprint} title="Customer IP address">
                                 {o.customerIp ?? "No IP"}
                               </InfoChip>
+                              {o.courierConsignmentId && (
+                                <span
+                                  title={`Courier: ${courierStatusLabel(o.courierStatus)}${
+                                    o.courierSentAt ? ` · sent ${o.courierSentAt}` : ""
+                                  }`}
+                                  className={`inline-flex items-center gap-1.5 text-[10px] font-extrabold px-2 py-[5px] rounded-lg ring-1 ${
+                                    COURIER_TONE_CHIP[courierStatusTone(o.courierStatus)]
+                                  }`}
+                                >
+                                  <Truck size={11} strokeWidth={2.6} className="shrink-0" />
+                                  <span className="truncate">
+                                    {o.courierTrackingCode || o.courierConsignmentId}
+                                  </span>
+                                </span>
+                              )}
                             </div>
                           </td>
 
@@ -890,7 +1024,13 @@ export default function OrdersClient({
                           {/* actions */}
                           <td className="px-3 py-4">
                             <div className="flex justify-end">
-                              <ActionPad code={o.code} onCourier={courierNotice} onDelete={() => setToDelete(o)} />
+                              <ActionPad
+                                code={o.code}
+                                courierState={o.courierConsignmentId ? "sent" : courierOn ? "ready" : "off"}
+                                busy={courierBusy === o.id}
+                                onCourier={() => sendOne(o)}
+                                onDelete={() => setToDelete(o)}
+                              />
                             </div>
                           </td>
                         </tr>
@@ -958,6 +1098,17 @@ export default function OrdersClient({
           confirmLabel={`Delete ${selected.length}`}
           onConfirm={() => bulk("delete")}
           onClose={() => (working ? undefined : setBulkDelete(false))}
+        />
+      )}
+
+      {bulkCourier && (
+        <ConfirmModal
+          title={`Send ${selectedUnsent} order(s) to the courier?`}
+          message="Each one is booked as a real parcel at Steadfast and cannot be un-booked from here. Orders that were already sent are skipped automatically."
+          loading={working}
+          confirmLabel={`Send ${selectedUnsent}`}
+          onConfirm={sendSelected}
+          onClose={() => (working ? undefined : setBulkCourier(false))}
         />
       )}
 
