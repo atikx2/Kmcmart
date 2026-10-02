@@ -52,6 +52,9 @@ function pageTitle(pathname: string): string {
   if (pathname === "/admin") return "Dashboard";
   if (/^\/admin\/orders\/.+/.test(pathname)) return "Order Details";
   if (pathname.startsWith("/admin/orders")) return "Order Management";
+  if (pathname === "/admin/products/new") return "Add Product";
+  if (/^\/admin\/products\/.+\/edit$/.test(pathname)) return "Edit Product";
+  if (pathname.startsWith("/admin/products")) return "Product Management";
   return "Admin Panel";
 }
 
@@ -60,7 +63,7 @@ const NAV: NavEntry[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { section: "Manage" },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
-  { label: "Products", icon: Package, soon: true },
+  { href: "/admin/products", label: "Products", icon: Package },
   { label: "Categories", icon: Shapes, soon: true },
   { label: "Banners", icon: Images, soon: true },
   { label: "Menus", icon: List, soon: true },

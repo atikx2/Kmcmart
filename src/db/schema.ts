@@ -80,6 +80,8 @@ export const products = pgTable("products", {
   sellPrice: integer("sell_price"),
   costPrice: integer("cost_price"),
   stock: integer("stock").notNull().default(50),
+  /** When true this product ships free — the admin sets it per product. */
+  freeDelivery: boolean("free_delivery").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
