@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { orders } from "@/db/schema";
-import { getSessionAdmin } from "@/lib/admin-auth";
+import { guardAdmin } from "@/lib/admin-api";
 import { isOrderStatus } from "@/lib/admin-orders";
 
 export const dynamic = "force-dynamic";
@@ -16,8 +16,8 @@ function parseIds(v: unknown): number[] | null {
 }
 
 export async function POST(req: NextRequest) {
-  const admin = await getSessionAdmin();
-  if (!admin) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await guardAdmin("orders");
+  if (denied) return denied;
 
   try {
     const body = (await req.json()) as { action?: unknown; ids?: unknown; status?: unknown };

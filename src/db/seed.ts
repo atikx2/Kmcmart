@@ -26,8 +26,24 @@ async function main() {
 
   /* ---------------- main admin ---------------- */
   await db.insert(admins).values({
+    name: "Atik Hasan",
     email: "atikhasan315377@gmail.com",
     passwordHash: hashPassword("Atik123@@"),
+    role: "owner",
+    permissions: [
+      "orders",
+      "products",
+      "categories",
+      "banners",
+      "menus",
+      "delivery",
+      "customers",
+      "reports",
+      "api",
+      "roles",
+      "settings",
+    ],
+    isActive: true,
   });
 
   /* ---------------- settings ---------------- */

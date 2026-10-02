@@ -2,15 +2,15 @@ import { NextRequest } from "next/server";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { categories } from "@/db/schema";
-import { getSessionAdmin } from "@/lib/admin-auth";
+import { guardAdmin } from "@/lib/admin-api";
 import { categorySlugTaken, listAdminCategories } from "@/lib/admin-categories";
 import { slugify } from "@/lib/product-admin";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const admin = await getSessionAdmin();
-  if (!admin) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await guardAdmin("categories");
+  if (denied) return denied;
 
   try {
     return Response.json(await listAdminCategories());
@@ -21,8 +21,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const admin = await getSessionAdmin();
-  if (!admin) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await guardAdmin("categories");
+  if (denied) return denied;
 
   try {
     const body = await req.json();

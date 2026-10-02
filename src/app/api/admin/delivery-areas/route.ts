@@ -13,7 +13,7 @@ function parseCharge(value: unknown): number | null {
 }
 
 export async function GET() {
-  const denied = await guardAdmin();
+  const denied = await guardAdmin("delivery");
   if (denied) return denied;
   try {
     return Response.json({ items: await listDeliveryAreas() });
@@ -24,7 +24,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const denied = await guardAdmin();
+  const denied = await guardAdmin("delivery");
   if (denied) return denied;
   try {
     const body = await req.json();

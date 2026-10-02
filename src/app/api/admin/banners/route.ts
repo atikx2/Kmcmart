@@ -7,7 +7,7 @@ import { listBanners } from "@/lib/admin-site-content";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const denied = await guardAdmin();
+  const denied = await guardAdmin("banners");
   if (denied) return denied;
   try {
     return Response.json({ items: await listBanners() });
@@ -18,7 +18,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const denied = await guardAdmin();
+  const denied = await guardAdmin("banners");
   if (denied) return denied;
   try {
     const body = await req.json();

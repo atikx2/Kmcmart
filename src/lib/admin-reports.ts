@@ -22,6 +22,15 @@ export type ReportBucket = {
   orders: number;
 };
 
+export type TopProduct = {
+  productId: number;
+  name: string;
+  image: string;
+  units: number;
+  revenue: number;
+  profit: number;
+};
+
 export type ProfitReport = {
   days: number;
   /** delivered only */
@@ -40,6 +49,8 @@ export type ProfitReport = {
   buckets: ReportBucket[];
   /** how many delivered items had no cost price on file */
   missingCost: number;
+  /** best sellers inside the range, delivered orders only */
+  topProducts: TopProduct[];
 };
 
 const DHAKA = "Asia/Dhaka";
@@ -106,7 +117,10 @@ export async function getProfitReport(days: number): Promise<ProfitReport> {
     unitsSold: 0,
     buckets,
     missingCost: 0,
+    topProducts: [],
   };
+
+  const perProduct = new Map<number, TopProduct>();
 
   for (const o of rows) {
     const idx = Math.min(bucketCount - 1, Math.max(0, Math.floor((o.createdAt.getTime() - startMs) / (span * 86_400_000))));
@@ -125,8 +139,22 @@ export async function getProfitReport(days: number): Promise<ProfitReport> {
     for (const it of o.items) {
       const unit = costOf.get(it.productId);
       if (!unit) r.missingCost += 1;
-      cogs += (unit ?? 0) * it.qty;
+      const lineCogs = (unit ?? 0) * it.qty;
+      cogs += lineCogs;
       r.unitsSold += it.qty;
+
+      const seen = perProduct.get(it.productId) ?? {
+        productId: it.productId,
+        name: it.name,
+        image: it.image,
+        units: 0,
+        revenue: 0,
+        profit: 0,
+      };
+      seen.units += it.qty;
+      seen.revenue += it.price * it.qty;
+      seen.profit += it.price * it.qty - lineCogs;
+      perProduct.set(it.productId, seen);
     }
 
     const profit = o.subtotal - cogs;
@@ -143,5 +171,6 @@ export async function getProfitReport(days: number): Promise<ProfitReport> {
 
   r.margin = r.revenue > 0 ? Math.round((r.profit / r.revenue) * 100) : 0;
   r.avgOrderValue = r.deliveredOrders > 0 ? Math.round(r.revenue / r.deliveredOrders) : 0;
+  r.topProducts = [...perProduct.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 8);
   return r;
 }

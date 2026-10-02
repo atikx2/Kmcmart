@@ -25,6 +25,9 @@ export default async function AdminPanelLayout({
   return (
     <AdminShell
       email={admin.email}
+      adminName={admin.name}
+      role={admin.role}
+      permissions={admin.permissions}
       pendingOrders={pendingOrders}
       logo={settings.logoHeader}
       siteName={settings.siteName}

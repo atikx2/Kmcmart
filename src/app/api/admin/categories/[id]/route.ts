@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, products } from "@/db/schema";
-import { getSessionAdmin } from "@/lib/admin-auth";
+import { guardAdmin } from "@/lib/admin-api";
 import { categorySlugTaken, countProductsInCategory } from "@/lib/admin-categories";
 import { slugify } from "@/lib/product-admin";
 
@@ -21,8 +21,8 @@ type Updates = Partial<{
 }>;
 
 export async function PATCH(req: NextRequest, { params }: Ctx) {
-  const admin = await getSessionAdmin();
-  if (!admin) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await guardAdmin("categories");
+  if (denied) return denied;
 
   const { id: raw } = await params;
   const id = Number(raw);
@@ -93,8 +93,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 }
 
 export async function DELETE(req: NextRequest, { params }: Ctx) {
-  const admin = await getSessionAdmin();
-  if (!admin) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await guardAdmin("categories");
+  if (denied) return denied;
 
   const { id: raw } = await params;
   const id = Number(raw);

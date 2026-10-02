@@ -7,7 +7,7 @@ import { isValidHref, listMenus, normalizeHref, HREF_HINT } from "@/lib/admin-si
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const denied = await guardAdmin();
+  const denied = await guardAdmin("menus");
   if (denied) return denied;
   try {
     return Response.json({ items: await listMenus() });
@@ -18,7 +18,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const denied = await guardAdmin();
+  const denied = await guardAdmin("menus");
   if (denied) return denied;
   try {
     const body = await req.json();

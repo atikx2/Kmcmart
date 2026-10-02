@@ -599,9 +599,18 @@ export default function OrderDetailClient({
                     className={`${inputCls} mt-1`}
                   />
                 ) : (
-                  <a href={`tel:${order.phone}`} className="text-[13.5px] font-bold text-gray-800 hover:grad-text break-words">
-                    {order.phone}
-                  </a>
+                  <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                    <a href={`tel:${order.phone}`} className="text-[13.5px] font-bold text-gray-800 hover:grad-text break-words">
+                      {order.phone}
+                    </a>
+                    <Link
+                      href={`/admin/customers/${encodeURIComponent(order.phone)}`}
+                      className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider text-gray-500 bg-[#fafafc] border border-gray-100 rounded-full px-2 py-[3px] hover:border-[var(--g1)] hover:text-[var(--g2)] transition"
+                    >
+                      <User size={10} strokeWidth={2.6} />
+                      Profile
+                    </Link>
+                  </span>
                 )}
               </Row>
 

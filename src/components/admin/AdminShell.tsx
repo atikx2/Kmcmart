@@ -29,6 +29,7 @@ import {
   X,
 } from "lucide-react";
 import { NAV_COOKIE, NAV_COOKIE_MAX_AGE } from "@/lib/admin-ui";
+import { can, roleLabel, ROLE_CHIP, type PermissionKey } from "@/lib/permissions";
 
 type NavItem = {
   href?: string;
@@ -36,6 +37,8 @@ type NavItem = {
   icon: React.ComponentType<{ size?: number | string; className?: string }>;
   soon?: boolean;
   badge?: number;
+  /** undefined = always visible (Dashboard). Otherwise the admin needs this key. */
+  perm?: PermissionKey;
 };
 
 type NavEntry = { section: string } | NavItem;
@@ -64,6 +67,9 @@ function pageTitle(pathname: string): string {
   if (pathname.startsWith("/admin/delivery-areas")) return "Delivery Area";
   if (pathname.startsWith("/admin/reports")) return "Report";
   if (pathname.startsWith("/admin/api")) return "API Integrations";
+  if (/^\/admin\/customers\/.+/.test(pathname)) return "Customer Profile";
+  if (pathname.startsWith("/admin/customers")) return "Customers";
+  if (pathname.startsWith("/admin/roles")) return "Role Management";
   return "Admin Panel";
 }
 
@@ -71,19 +77,29 @@ const NAV: NavEntry[] = [
   { section: "Main" },
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { section: "Manage" },
-  { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
-  { href: "/admin/products", label: "Products", icon: Package },
-  { href: "/admin/categories", label: "Categories", icon: Shapes },
-  { href: "/admin/banners", label: "Banners", icon: Images },
-  { href: "/admin/menus", label: "Menus", icon: List },
-  { href: "/admin/delivery-areas", label: "Delivery Area", icon: Truck },
+  { href: "/admin/orders", label: "Orders", icon: ShoppingCart, perm: "orders" },
+  { href: "/admin/products", label: "Products", icon: Package, perm: "products" },
+  { href: "/admin/categories", label: "Categories", icon: Shapes, perm: "categories" },
+  { href: "/admin/banners", label: "Banners", icon: Images, perm: "banners" },
+  { href: "/admin/menus", label: "Menus", icon: List, perm: "menus" },
+  { href: "/admin/delivery-areas", label: "Delivery Area", icon: Truck, perm: "delivery" },
+  { href: "/admin/customers", label: "Customers", icon: Users, perm: "customers" },
   { section: "System" },
-  { href: "/admin/reports", label: "Report", icon: ChartColumn, soon: true },
-  { href: "/admin/api", label: "API", icon: Webhook, soon: true },
-  { label: "Customers", icon: Users, soon: true },
-  { label: "Roles", icon: ShieldCheck, soon: true },
-  { label: "Site Settings", icon: Settings, soon: true },
+  { href: "/admin/reports", label: "Report", icon: ChartColumn, perm: "reports" },
+  { href: "/admin/api", label: "API", icon: Webhook, soon: true, perm: "api" },
+  { href: "/admin/roles", label: "Roles", icon: ShieldCheck, perm: "roles" },
+  { label: "Site Settings", icon: Settings, soon: true, perm: "settings" },
 ];
+
+/** Hides every page the admin has no key for, plus any section header left empty. */
+function visibleNav(admin: { role: string; permissions: string[] }): NavEntry[] {
+  const allowed = NAV.filter((e) => !isItem(e) || !e.perm || can(admin, e.perm));
+  return allowed.filter((e, i) => {
+    if (isItem(e)) return true;
+    const next = allowed[i + 1];
+    return next !== undefined && isItem(next);
+  });
+}
 
 /* ---------------- profile modals ---------------- */
 
@@ -239,6 +255,9 @@ function ProfileModal({
 
 export default function AdminShell({
   email,
+  adminName,
+  role,
+  permissions,
   pendingOrders,
   logo,
   siteName,
@@ -246,6 +265,9 @@ export default function AdminShell({
   children,
 }: {
   email: string;
+  adminName: string;
+  role: string;
+  permissions: string[];
   pendingOrders: number;
   logo: string;
   siteName: string;
@@ -295,10 +317,11 @@ export default function AdminShell({
   };
 
   const title = pageTitle(pathname);
+  const nav = visibleNav({ role, permissions });
 
   const navContent = (isCollapsed: boolean) => (
     <nav className="flex-1 overflow-y-auto no-scrollbar py-3">
-      {NAV.map((entry, idx) => {
+      {nav.map((entry, idx) => {
         if (!isItem(entry)) {
           return isCollapsed ? (
             <div key={idx} className="mx-4 my-3 border-t border-gray-100" />
@@ -474,7 +497,16 @@ export default function AdminShell({
                 <div className="absolute right-0 top-[calc(100%+10px)] w-[264px] bg-white rounded-2xl border border-gray-100 shadow-[0_20px_60px_rgba(17,18,28,0.16)] overflow-hidden animate-slide-down">
                   <div className="px-4 py-3.5 border-b border-gray-100">
                     <p className="text-[11px] font-extrabold uppercase tracking-wider text-gray-400">Signed in as</p>
-                    <p className="text-[13px] font-extrabold text-gray-800 truncate mt-0.5">{email}</p>
+                    <p className="text-[13px] font-extrabold text-gray-800 truncate mt-0.5">{adminName || email}</p>
+                    <p className="text-[11px] font-semibold text-gray-400 truncate">{email}</p>
+                    <span
+                      className={`mt-2 inline-flex items-center gap-1 text-[9.5px] font-extrabold uppercase tracking-wider px-2 py-[4px] rounded-full ring-1 ${
+                        ROLE_CHIP[role] ?? ROLE_CHIP.custom
+                      }`}
+                    >
+                      <ShieldCheck size={10} strokeWidth={2.6} />
+                      {roleLabel(role)}
+                    </span>
                   </div>
                   <button
                     onClick={() => {

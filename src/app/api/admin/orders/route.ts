@@ -1,12 +1,12 @@
 import { NextRequest } from "next/server";
-import { getSessionAdmin } from "@/lib/admin-auth";
+import { guardAdmin } from "@/lib/admin-api";
 import { listAdminOrders, ORDERS_PAGE_SIZE } from "@/lib/admin-orders";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const admin = await getSessionAdmin();
-  if (!admin) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await guardAdmin("orders");
+  if (denied) return denied;
 
   try {
     const sp = req.nextUrl.searchParams;

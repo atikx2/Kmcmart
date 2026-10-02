@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function PATCH(req: NextRequest, { params }: Ctx) {
-  const denied = await guardAdmin();
+  const denied = await guardAdmin("menus");
   if (denied) return denied;
 
   const id = routeId((await params).id);
@@ -50,7 +50,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 }
 
 export async function DELETE(_req: NextRequest, { params }: Ctx) {
-  const denied = await guardAdmin();
+  const denied = await guardAdmin("menus");
   if (denied) return denied;
 
   const id = routeId((await params).id);

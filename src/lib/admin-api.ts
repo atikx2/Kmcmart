@@ -1,10 +1,19 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { getSessionAdmin } from "@/lib/admin-auth";
+import { can, type PermissionKey } from "@/lib/permissions";
 
-/** 401 response when nobody is signed in, otherwise null. */
-export async function guardAdmin(): Promise<Response | null> {
+/**
+ * 401 when nobody is signed in, 403 when the signed-in admin lacks the
+ * permission, otherwise null and the route carries on.
+ */
+export async function guardAdmin(permission?: PermissionKey): Promise<Response | null> {
   const admin = await getSessionAdmin();
-  return admin ? null : Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!admin) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!admin.isActive) return Response.json({ error: "This admin account is disabled" }, { status: 403 });
+  if (permission && !can(admin, permission)) {
+    return Response.json({ error: "You do not have access to this section" }, { status: 403 });
+  }
+  return null;
 }
 
 export function fail(message: string, status = 400): Response {

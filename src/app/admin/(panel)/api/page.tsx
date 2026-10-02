@@ -11,6 +11,7 @@ import {
   Webhook,
 } from "lucide-react";
 import type { IconCmp } from "@/components/admin/table-ui";
+import { requirePermission } from "@/lib/admin-guard";
 
 export const metadata: Metadata = { title: "API · Admin" };
 export const dynamic = "force-dynamic";
@@ -78,7 +79,8 @@ const INTEGRATIONS: Integration[] = [
   },
 ];
 
-export default function AdminApiPage() {
+export default async function AdminApiPage() {
+  await requirePermission("api");
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-3xl border border-gray-100 shadow-[0_4px_18px_rgba(17,18,28,0.05)] p-4 md:p-5">

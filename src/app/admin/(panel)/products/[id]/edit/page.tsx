@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getAdminProductById, getCategoryOptions } from "@/lib/admin-products";
 import type { ProductFormValues } from "@/lib/product-admin";
 import ProductForm from "../../ProductForm";
+import { requirePermission } from "@/lib/admin-guard";
 
 export const metadata: Metadata = { title: "Edit Product · Admin" };
 export const dynamic = "force-dynamic";
@@ -12,6 +13,7 @@ export default async function EditProductPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requirePermission("products");
   const { id: raw } = await params;
   const id = Number(raw);
   if (!Number.isInteger(id) || id <= 0) notFound();

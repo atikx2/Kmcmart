@@ -4,6 +4,7 @@ import {
   CircleCheck,
   CircleX,
   Clock,
+  ShieldAlert,
   ShoppingBag,
   TrendingUp,
   Truck,
@@ -11,6 +12,7 @@ import {
 import { getDashboardData } from "@/lib/admin-data";
 import { taka } from "@/lib/format";
 import OrdersChart from "@/components/admin/OrdersChart";
+import { permissionLabel } from "@/lib/permissions";
 
 const statusChip: Record<string, string> = {
   pending: "bg-amber-50 text-amber-600 border border-amber-100",
@@ -26,8 +28,13 @@ const statusLabel: Record<string, string> = {
   cancelled: "Cancelled",
 };
 
-export default async function AdminDashboardPage() {
-  const { stats, chart, recent } = await getDashboardData();
+export default async function AdminDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ denied?: string }>;
+}) {
+  const [{ stats, chart, recent }, sp] = await Promise.all([getDashboardData(), searchParams]);
+  const denied = sp.denied ? permissionLabel(sp.denied) : null;
 
   const cards = [
     {
@@ -90,6 +97,15 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="space-y-5">
+      {denied && (
+        <p className="flex items-start gap-2 text-[12px] font-bold text-rose-600 bg-rose-50 border border-rose-100 rounded-2xl px-4 py-3">
+          <ShieldAlert size={15} className="shrink-0 mt-[1px]" />
+          <span>
+            You do not have access to <b>{denied}</b>. Ask the Super Admin to turn that page on for your account.
+          </span>
+        </p>
+      )}
+
       {/* stat cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
         {cards.map(({ label, value, sub, icon: Icon, gradient }) => (

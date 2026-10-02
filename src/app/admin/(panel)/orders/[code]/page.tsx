@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getAdminOrderByCode } from "@/lib/admin-orders";
 import OrderDetailClient from "./OrderDetailClient";
+import { requirePermission } from "@/lib/admin-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export default async function AdminOrderDetailPage({
   params: Promise<{ code: string }>;
   searchParams: Promise<{ edit?: string }>;
 }) {
+  await requirePermission("orders");
   const [{ code }, { edit }] = await Promise.all([params, searchParams]);
   const order = await getAdminOrderByCode(code);
   if (!order) notFound();

@@ -98,8 +98,14 @@ export const deliveryAreas = pgTable("delivery_areas", {
 
 export const admins = pgTable("admins", {
   id: serial("id").primaryKey(),
+  name: text("name").notNull().default(""),
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
+  /** "owner" is the first admin — it always keeps every permission. */
+  role: text("role").notNull().default("manager"),
+  /** Permission keys from ADMIN_PERMISSIONS; ignored for the owner. */
+  permissions: jsonb("permissions").$type<string[]>().notNull().default([]),
+  isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

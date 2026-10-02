@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { products } from "@/db/schema";
-import { getSessionAdmin } from "@/lib/admin-auth";
+import { guardAdmin } from "@/lib/admin-api";
 import { cleanImages, slugTaken, slugify } from "@/lib/admin-products";
 
 export const dynamic = "force-dynamic";
@@ -30,8 +30,8 @@ function money(v: unknown): number | null {
 }
 
 export async function PATCH(req: NextRequest, { params }: Ctx) {
-  const admin = await getSessionAdmin();
-  if (!admin) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await guardAdmin("products");
+  if (denied) return denied;
 
   const { id: raw } = await params;
   const id = Number(raw);
@@ -153,8 +153,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 }
 
 export async function DELETE(_req: NextRequest, { params }: Ctx) {
-  const admin = await getSessionAdmin();
-  if (!admin) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await guardAdmin("products");
+  if (denied) return denied;
 
   const { id: raw } = await params;
   const id = Number(raw);

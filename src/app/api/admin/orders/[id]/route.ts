@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { orders, type OrderItem } from "@/db/schema";
-import { getSessionAdmin } from "@/lib/admin-auth";
+import { guardAdmin } from "@/lib/admin-api";
 import { isOrderStatus } from "@/lib/admin-orders";
 
 export const dynamic = "force-dynamic";
@@ -41,8 +41,8 @@ function cleanItems(v: unknown): OrderItem[] | null {
 }
 
 export async function PATCH(req: NextRequest, { params }: Ctx) {
-  const admin = await getSessionAdmin();
-  if (!admin) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await guardAdmin("orders");
+  if (denied) return denied;
 
   try {
     const id = parseId((await params).id);
@@ -134,8 +134,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 }
 
 export async function DELETE(_req: NextRequest, { params }: Ctx) {
-  const admin = await getSessionAdmin();
-  if (!admin) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await guardAdmin("orders");
+  if (denied) return denied;
 
   try {
     const id = parseId((await params).id);
