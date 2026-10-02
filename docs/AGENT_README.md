@@ -143,10 +143,24 @@ because Drizzle wraps the driver error).
 
 | File | What |
 |---|---|
+| `RUN-ALL-PENDING.sql` | **what the owner actually runs** — all of the below, correctly ordered, minus the destructive part |
 | `010-fraud-check.sql` | `fraud_config`, `fraud_reports` |
 | `011-tracking-and-indexes.sql` | `tracking_tags`, 7 indexes, optional order-snapshot cleanup |
 | `012-settings-step7.sql` | the 8 Site Settings columns |
 | `013-courier-step9.sql` | courier auto-sync columns |
+
+**Numeric order is not execution order.** `011` indexes
+`orders.courier_checked_at`, which `013` adds, so `010 → 011` fails with
+`42703` and Neon rolls the whole script back. When you add a migration that
+depends on an earlier one, update `RUN-ALL-PENDING.sql` too, and test the
+combined file in a single transaction.
+
+**A missing column can be worse than a missing table.** `isMissingTable`
+(42P01) does not catch 42703. More importantly, no catch helps an `INSERT`:
+Drizzle builds the column list from the schema, so if `orders` is missing one
+column, `POST /api/orders` fails and the shop takes no orders at all. That is
+why the SQL has to be run *before* the deploy, and why "the code degrades
+gracefully" is only true for reads.
 
 Earlier changes (products.free_delivery, orders.customer_ip, admins.role/permissions,
 `order_statuses`, `courier_config`) were sent to the owner as chat SQL before

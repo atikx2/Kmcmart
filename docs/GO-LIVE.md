@@ -11,23 +11,41 @@ Do these in order. Steps 1 and 2 are the important ones.
 
 ## Step 1 — Run the SQL (do this first)
 
-Open **Neon → your project → SQL Editor**, paste each file, press **Run**.
-Run them in this order. Each one is safe to run twice, so if you lose track,
-just run it again.
+**Run the SQL before the new code goes live, not after.** Adding these columns
+does not disturb the version that is running right now — it ignores them. But
+the new code cannot write an order without them, so if the deploy lands first,
+customers cannot check out until you finish this step.
 
-| # | File in the repo | What it adds |
-|---|---|---|
-| 1 | `docs/sql/010-fraud-check.sql` | Fraud checker tables |
-| 2 | `docs/sql/011-tracking-and-indexes.sql` | Marketing tags + 7 speed indexes |
-| 3 | `docs/sql/012-settings-step7.sql` | **Site Settings columns — most important** |
-| 4 | `docs/sql/013-courier-step9.sql` | Courier auto-sync columns |
+Open **Neon → your project → SQL Editor**, paste **one file**, press **Run**:
 
-To open a file on your phone: GitHub → the repo → `docs` → `sql` → tap the
-file → tap the **copy** icon at the top right of the code box.
+> ### `docs/sql/RUN-ALL-PENDING.sql`
 
-**If you skip number 3**, Site Settings will show an orange box telling you to
-run it. Nothing breaks and no data is lost — the rest of the site keeps
-working. Just run the file and reload.
+That single file contains everything outstanding, already in the right order.
+It is safe to run twice — every statement is `IF NOT EXISTS`, nothing is
+dropped, and nothing you have saved is overwritten. You should see **Success**
+with no rows returned.
+
+To copy it on your phone: GitHub → the repo → `docs` → `sql` →
+`RUN-ALL-PENDING.sql` → tap the **copy raw file** icon at the top right.
+
+<details>
+<summary>What it contains, and why not the individual files</summary>
+
+It is the same content as `012`, `013`, `010` and parts 1–2 of `011`:
+
+| Piece | What it adds |
+|---|---|
+| `012` | Site Settings columns — without these Settings cannot save |
+| `013` | Courier auto-sync columns — **without these checkout breaks** |
+| `010` | Fraud checker tables |
+| `011` p1–2 | Marketing tags table + 7 speed indexes |
+
+The individual files are still there, but **do not run them in numeric
+order**: `011` builds an index on a column that `013` adds, so `010 → 011`
+fails with `column "courier_checked_at" does not exist` and Neon rolls the
+whole script back. The combined file fixes the ordering.
+
+</details>
 
 ### One optional extra
 
