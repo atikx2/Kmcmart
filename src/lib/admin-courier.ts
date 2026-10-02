@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { courierConfig, orders, type CourierConfigRow } from "@/db/schema";
-import { decryptSecret, encryptSecret } from "@/lib/courier-crypto";
+import { authSecretIsSet, decryptSecret, encryptSecret } from "@/lib/courier-crypto";
 import {
   COURIER_BULK_MAX,
   COURIER_DEFAULT_BASE,
@@ -20,6 +20,7 @@ import {
 
 /* Server-only. Client components import "@/lib/courier". */
 export * from "@/lib/courier";
+export { authSecretIsSet };
 
 /** Courier calls go over the public internet — never let one hang a request. */
 const TIMEOUT_MS = 20_000;

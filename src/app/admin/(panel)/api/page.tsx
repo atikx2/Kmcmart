@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { CheckCircle2, FileText, Info, KeyRound, Link2, MessageSquare, Wallet, Webhook } from "lucide-react";
 import type { IconCmp } from "@/components/admin/table-ui";
 import { requirePermission } from "@/lib/admin-guard";
-import { courierSummary, loadCourierConfig, toPublicConfig } from "@/lib/admin-courier";
+import { authSecretIsSet, courierSummary, loadCourierConfig, toPublicConfig } from "@/lib/admin-courier";
 import { listOrderStatuses } from "@/lib/admin-order-statuses";
 import CourierClient from "./CourierClient";
 
@@ -91,7 +91,13 @@ export default async function AdminApiPage() {
         </p>
       </div>
 
-      <CourierClient initial={toPublicConfig(row)} ready={ready} statuses={statuses} summary={summary} />
+      <CourierClient
+        initial={toPublicConfig(row)}
+        ready={ready}
+        statuses={statuses}
+        summary={summary}
+        authSecretSet={authSecretIsSet()}
+      />
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
         {SOON.map((it) => {

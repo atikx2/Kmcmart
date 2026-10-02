@@ -58,11 +58,14 @@ export default function CourierClient({
   ready,
   statuses,
   summary,
+  authSecretSet,
 }: {
   initial: CourierConfigPublic;
   ready: boolean;
   statuses: OrderStatusOption[];
   summary: { sent: number; notSent: number };
+  /** False when the deployment has no AUTH_SECRET — encryption still works, but with a shared key. */
+  authSecretSet: boolean;
 }) {
   const router = useRouter();
   const [toast, showToast] = useToast();
@@ -367,6 +370,18 @@ export default function CourierClient({
                 full — only the masked preview above.
               </span>
             </p>
+
+            {!authSecretSet && (
+              <p className="flex items-start gap-2 text-[11.5px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-2xl px-3.5 py-2.5">
+                <AlertTriangle size={14} className="shrink-0 mt-[1px]" />
+                <span>
+                  Saving works, but this site has no <code className="font-mono">AUTH_SECRET</code> environment
+                  variable, so the keys are encrypted with a shared fallback. Add one in Netlify → Site settings →
+                  Environment variables for encryption unique to your site. Keys saved now keep working after you add
+                  it.
+                </span>
+              </p>
+            )}
           </div>
 
           <div className="px-4 md:px-5 py-4 border-t border-gray-100 flex flex-wrap gap-2">
