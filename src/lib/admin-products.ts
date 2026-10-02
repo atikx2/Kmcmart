@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, products } from "@/db/schema";
+import { dbImageUrl } from "@/lib/format";
 import {
   formatProductDate,
   PRODUCTS_PAGE_SIZE,
@@ -60,7 +61,12 @@ export async function listAdminProducts(opts: {
         id: products.id,
         name: products.name,
         slug: products.slug,
-        images: products.images,
+        /* The list only shows a thumbnail. Pulling the `images` array itself
+           meant every page of 25 carried the base64 originals — about 13 MB
+           — so it asks for a content hash and a count instead and points the
+           markup at /api/img. */
+        imageVersion: sql<string | null>`substr(md5(${products.images}->>0), 1, 8)`,
+        imagesCount: sql<number>`coalesce(jsonb_array_length(${products.images}), 0)::int`,
         categoryId: products.categoryId,
         categoryName: categories.name,
         regularPrice: products.regularPrice,
@@ -87,8 +93,8 @@ export async function listAdminProducts(opts: {
     id: r.id,
     name: r.name,
     slug: r.slug,
-    image: (r.images ?? [])[0] ?? "",
-    imagesCount: (r.images ?? []).length,
+    image: r.imageVersion ? dbImageUrl("p", r.id, 0, r.imageVersion) : "",
+    imagesCount: r.imagesCount,
     categoryId: r.categoryId,
     categoryName: r.categoryName,
     regularPrice: r.regularPrice,

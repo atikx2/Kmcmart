@@ -2,7 +2,7 @@ import { NextRequest, after } from "next/server";
 import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { deliveryAreas, orders, products } from "@/db/schema";
-import { effectivePrice, padOrderCode } from "@/lib/format";
+import { dbImageUrl, effectivePrice, padOrderCode } from "@/lib/format";
 import { getSessionCustomer } from "@/lib/auth";
 
 type IncomingItem = { id: number; qty: number };
@@ -57,11 +57,13 @@ export async function POST(req: NextRequest) {
         .limit(1),
       /* Only the columns the order snapshot needs. `images` holds base64 data
          URLs, so selecting the whole row dragged hundreds of kilobytes across
-         the wire per product; `->>0` fetches just the thumbnail. */
+         the wire per product. The snapshot keeps an /api/img link instead of
+         the image itself, which is what made the orders table — and every
+         admin query that touches it — so heavy. */
       db.select({
         id: products.id,
         name: products.name,
-        image: sql<string | null>`${products.images}->>0`,
+        imageVersion: sql<string | null>`substr(md5(${products.images}->>0), 1, 8)`,
         regularPrice: products.regularPrice,
         sellPrice: products.sellPrice,
         freeDelivery: products.freeDelivery,
@@ -81,7 +83,7 @@ export async function POST(req: NextRequest) {
       return {
         productId: p.id,
         name: p.name,
-        image: p.image ?? "",
+        image: dbImageUrl("p", p.id, 0, p.imageVersion),
         price: effectivePrice(p.regularPrice, p.sellPrice),
         qty: Math.min(Math.max(1, i.qty), 99),
       };

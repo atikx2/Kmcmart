@@ -19,6 +19,7 @@ import {
   type Settings,
 } from "@/db/schema";
 import { isLang, mergeLegacyText, resolveText, type SiteText } from "@/lib/i18n";
+import { dbImageUrl } from "@/lib/format";
 
 /* ---------------- settings / layout data (cached) ---------------- */
 
@@ -49,25 +50,67 @@ export const getMenus = unstable_cache(
   { revalidate: 60, tags: ["menus"] }
 );
 
+/* Banner and category pictures are stored inline too, so they get the same
+   treatment: the row carries a content hash and the markup points at
+   /api/img. Keeps the cached payload — and the HTML — small. */
+const bannerColumns = {
+  id: banners.id,
+  alt: banners.alt,
+  imageVersion: sql<string | null>`substr(md5(${banners.imageUrl}), 1, 8)`,
+  sortOrder: banners.sortOrder,
+  isActive: banners.isActive,
+};
+
 export const getBanners = unstable_cache(
   async (): Promise<Banner[]> => {
-    return db
-      .select()
+    const rows = await db
+      .select(bannerColumns)
       .from(banners)
       .where(eq(banners.isActive, true))
       .orderBy(asc(banners.sortOrder), asc(banners.id));
+    return rows.map(({ imageVersion, ...b }) => ({
+      ...b,
+      imageUrl: dbImageUrl("b", b.id, 0, imageVersion),
+    }));
   },
   ["banners"],
   { revalidate: 60, tags: ["banners"] }
 );
 
+const categoryColumns = {
+  id: categories.id,
+  name: categories.name,
+  slug: categories.slug,
+  imageVersion: sql<string | null>`nullif(substr(md5(${categories.imageUrl}), 1, 8), '')`,
+  hasImage: sql<boolean>`${categories.imageUrl} <> ''`,
+  sortOrder: categories.sortOrder,
+  isActive: categories.isActive,
+  showOnHome: categories.showOnHome,
+};
+
+type CategoryRow = {
+  id: number;
+  name: string;
+  slug: string;
+  imageVersion: string | null;
+  hasImage: boolean;
+  sortOrder: number;
+  isActive: boolean;
+  showOnHome: boolean;
+};
+
+function rowToCategory({ imageVersion, hasImage, ...c }: CategoryRow): Category {
+  return { ...c, imageUrl: hasImage ? dbImageUrl("c", c.id, 0, imageVersion) : "" };
+}
+
 export const getCategories = unstable_cache(
   async (): Promise<Category[]> => {
-    return db
-      .select()
+    const rows = await db
+      .select(categoryColumns)
       .from(categories)
       .where(eq(categories.isActive, true))
       .orderBy(asc(categories.sortOrder), asc(categories.id));
+    return rows.map(rowToCategory);
   },
   ["categories"],
   { revalidate: 60, tags: ["categories"] }
@@ -75,11 +118,12 @@ export const getCategories = unstable_cache(
 
 export const getHomeCategories = unstable_cache(
   async (): Promise<Category[]> => {
-    return db
-      .select()
+    const rows = await db
+      .select(categoryColumns)
       .from(categories)
       .where(and(eq(categories.isActive, true), eq(categories.showOnHome, true)))
       .orderBy(asc(categories.sortOrder), asc(categories.id));
+    return rows.map(rowToCategory);
   },
   ["home-categories"],
   { revalidate: 60, tags: ["home-categories"] }
@@ -99,6 +143,48 @@ export const getDeliveryAreas = unstable_cache(
 
 /* ---------------- products ---------------- */
 
+/**
+ * Everything a product card needs and nothing else.
+ *
+ * `images` is a jsonb array of base64 data URLs, so `select *` dragged the
+ * full-size pictures out of the database only for `toLite` to throw all but
+ * the first one away — about 13 MB for a twelve-product grid. Here the
+ * database returns a short content hash instead and the markup points at
+ * /api/img, which serves the bytes once and lets the browser cache them.
+ */
+const liteColumns = {
+  id: products.id,
+  name: products.name,
+  slug: products.slug,
+  imageVersion: sql<string | null>`substr(md5(${products.images}->>0), 1, 8)`,
+  regularPrice: products.regularPrice,
+  sellPrice: products.sellPrice,
+  freeDelivery: products.freeDelivery,
+};
+
+type LiteRow = {
+  id: number;
+  name: string;
+  slug: string;
+  imageVersion: string | null;
+  regularPrice: number;
+  sellPrice: number | null;
+  freeDelivery: boolean;
+};
+
+function rowToLite(p: LiteRow): ProductLite {
+  return {
+    id: p.id,
+    name: p.name,
+    slug: p.slug,
+    image: dbImageUrl("p", p.id, 0, p.imageVersion),
+    regularPrice: p.regularPrice,
+    sellPrice: p.sellPrice,
+    freeDelivery: p.freeDelivery,
+  };
+}
+
+/** Kept for callers that already hold a full row (admin previews). */
 function toLite(p: Product): ProductLite {
   return {
     id: p.id,
@@ -131,20 +217,18 @@ export async function getProducts({
   }
 
   if (categorySlug && categorySlug !== "all") {
-    const cat = await db
-      .select({ id: categories.id })
-      .from(categories)
-      .where(eq(categories.slug, categorySlug))
-      .limit(1);
-    if (!cat[0]) return { items: [], hasMore: false, total: 0 };
-    conds.push(eq(products.categoryId, cat[0].id));
+    /* A sub-select keeps this to one round trip instead of looking the
+       category up first and then querying products. */
+    conds.push(
+      sql`${products.categoryId} = (select id from ${categories} where ${categories.slug} = ${categorySlug} limit 1)`
+    );
   }
 
   const where = and(...conds);
 
   const [rows, countRows] = await Promise.all([
     db
-      .select()
+      .select(liteColumns)
       .from(products)
       .where(where)
       .orderBy(asc(products.id))
@@ -158,32 +242,59 @@ export async function getProducts({
 
   const hasMore = rows.length > limit;
   return {
-    items: rows.slice(0, limit).map(toLite),
+    items: rows.slice(0, limit).map(rowToLite),
     hasMore,
     total: countRows[0]?.count ?? 0,
   };
 }
 
 export async function getProductBySlug(slug: string): Promise<(Product & { category?: Category }) | null> {
+  /* One query, and the gallery comes back as /api/img URLs rather than a
+     few megabytes of base64 inlined into the page. */
   const rows = await db
-    .select()
+    .select({
+      id: products.id,
+      name: products.name,
+      slug: products.slug,
+      categoryId: products.categoryId,
+      description: products.description,
+      imageVersions: sql<string[] | null>`(
+        select array_agg(substr(md5(value), 1, 8) order by ord)
+        from jsonb_array_elements_text(${products.images}) with ordinality as t(value, ord)
+      )`,
+      regularPrice: products.regularPrice,
+      sellPrice: products.sellPrice,
+      costPrice: products.costPrice,
+      stock: products.stock,
+      freeDelivery: products.freeDelivery,
+      isActive: products.isActive,
+      createdAt: products.createdAt,
+      category: categories,
+    })
     .from(products)
+    .leftJoin(categories, eq(categories.id, products.categoryId))
     .where(and(eq(products.slug, slug), eq(products.isActive, true)))
     .limit(1);
-  const p = rows[0];
-  if (!p) return null;
-  const cat = await db.select().from(categories).where(eq(categories.id, p.categoryId)).limit(1);
-  return { ...p, category: cat[0] };
+
+  const row = rows[0];
+  if (!row) return null;
+
+  const { imageVersions, category, ...rest } = row;
+  return {
+    ...rest,
+    images: (imageVersions ?? []).map((v, i) => dbImageUrl("p", row.id, i, v)),
+    category: category ?? undefined,
+  };
 }
 
 export async function getCategoryBySlug(slug: string): Promise<Category | null> {
-  const rows = await db.select().from(categories).where(eq(categories.slug, slug)).limit(1);
-  return rows[0] ?? null;
+  const rows = await db.select(categoryColumns).from(categories).where(eq(categories.slug, slug)).limit(1);
+  return rows[0] ? rowToCategory(rows[0]) : null;
 }
 
 export async function getRelatedProducts(categoryId: number, excludeId: number, limit = 6): Promise<ProductLite[]> {
   const rows = await db
-    .select()
+    .select(liteColumns)
     .from(products)
     .where(and(eq(products.isActive, true), eq(products.categoryId, categoryId)))
     .orderBy(desc(products.id))
@@ -191,18 +302,18 @@ export async function getRelatedProducts(categoryId: number, excludeId: number, 
   return rows
     .filter((p) => p.id !== excludeId)
     .slice(0, limit)
-    .map(toLite);
+    .map(rowToLite);
 }
 
 export async function searchProducts(q: string, limit = 8): Promise<ProductLite[]> {
   if (!q.trim()) return [];
   const rows = await db
-    .select()
+    .select(liteColumns)
     .from(products)
     .where(and(eq(products.isActive, true), ilike(products.name, `%${q.trim()}%`)))
     .orderBy(asc(products.name))
     .limit(limit);
-  return rows.map(toLite);
+  return rows.map(rowToLite);
 }
 
 export async function getOrderByCode(code: string): Promise<Order | null> {

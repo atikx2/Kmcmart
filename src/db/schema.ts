@@ -206,6 +206,32 @@ export const fraudReports = pgTable("fraud_reports", {
 export type FraudConfigRow = typeof fraudConfig.$inferSelect;
 export type FraudReportRow = typeof fraudReports.$inferSelect;
 
+/**
+ * Marketing / analytics tags the shop owner pastes in from the API page.
+ *
+ * Several can be live at once — a GTM container, a GA4 property and a Google
+ * Ads conversion id is a normal combination — so this is a table rather than
+ * a handful of columns on `settings`.
+ *
+ * Only an identifier is stored, never a raw <script> block: the site builds
+ * the snippet itself from a known template. A compromised admin account
+ * therefore cannot turn this into arbitrary JavaScript on the storefront.
+ */
+export const trackingTags = pgTable("tracking_tags", {
+  id: serial("id").primaryKey(),
+  /** One of TRACKING_PROVIDERS — gtm, ga4, gads, meta, verification. */
+  provider: text("provider").notNull(),
+  /** The owner's own note, e.g. "Main GA4" — shown in the list. */
+  label: text("label").notNull().default(""),
+  /** GTM-XXXXXXX, G-XXXXXXXXXX, AW-123456789, a pixel id, a verification token. */
+  tagId: text("tag_id").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type TrackingTag = typeof trackingTags.$inferSelect;
+
 export const admins = pgTable("admins", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().default(""),

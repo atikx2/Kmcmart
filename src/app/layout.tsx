@@ -3,6 +3,8 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { getSettings } from "@/lib/data";
 import { isLang } from "@/lib/i18n";
+import { getActiveTrackingTags } from "@/lib/admin-tracking";
+import TrackingScripts, { TrackingNoScript, verificationTokens } from "@/components/site/TrackingScripts";
 
 export const dynamic = "force-dynamic";
 
@@ -33,20 +35,22 @@ export const viewport: Viewport = {
 };
 
 export async function generateMetadata(): Promise<Metadata> {
-  const s = await getSettings();
+  const [s, tags] = await Promise.all([getSettings(), getActiveTrackingTags()]);
   const title = s.metaTitle.trim() || `${s.siteName} — Best Online Shopping in Bangladesh`;
   const favicon = s.favicon.trim();
+  const verification = verificationTokens(tags);
   return {
     title: { default: title, template: `%s | ${s.siteName}` },
     description: s.metaDescription.trim() || s.slogan,
     ...(favicon ? { icons: { icon: favicon, shortcut: favicon, apple: favicon } } : {}),
+    ...(verification.length ? { verification: { google: verification } } : {}),
   };
 }
 
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const settings = await getSettings();
+  const [settings, tags] = await Promise.all([getSettings(), getActiveTrackingTags()]);
 
   return (
     <html
@@ -54,8 +58,10 @@ export default async function RootLayout({
       className={`${manrope.variable} ${grotesk.variable}`}
     >
       <body className="min-h-screen flex flex-col">
+        <TrackingNoScript tags={tags} />
         <style>{`:root{--g1:${settings.colorFrom};--g2:${settings.colorTo};}`}</style>
         {children}
+        <TrackingScripts tags={tags} />
       </body>
     </html>
   );
