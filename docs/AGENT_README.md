@@ -52,6 +52,7 @@ src/
 docs/
   AGENT_HANDOFF.md   the original build plan (historical, steps 1–9)
   AGENT_README.md    this file
+  GO-LIVE.md         owner-facing: post-merge checklist + domain migration
   sql/               every migration, numbered. See §3
 netlify/
   functions/courier-sync.mjs   scheduled function (V2 convention — see §8)
