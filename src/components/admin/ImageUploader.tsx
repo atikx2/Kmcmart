@@ -39,9 +39,16 @@ async function compress(file: File): Promise<string> {
 export default function ImageUploader({
   images,
   onChange,
+  max = MAX_PRODUCT_IMAGES,
+  label = "Add gallery image",
+  columns = "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4",
 }: {
   images: string[];
   onChange: (next: string[]) => void;
+  /** Cap the number of images — categories only keep one. */
+  max?: number;
+  label?: string;
+  columns?: string;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -49,7 +56,7 @@ export default function ImageUploader({
   const [url, setUrl] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const room = MAX_PRODUCT_IMAGES - images.length;
+  const room = max - images.length;
 
   const addFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -78,7 +85,7 @@ export default function ImageUploader({
       setError("Image links must start with http:// or https://");
       return;
     }
-    onChange([...images, v].slice(0, MAX_PRODUCT_IMAGES));
+    onChange([...images, v].slice(0, max));
     setUrl("");
     setUrlOpen(false);
     setError("");
@@ -95,7 +102,7 @@ export default function ImageUploader({
 
   return (
     <div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div className={`grid ${columns} gap-3`}>
         {images.map((src, i) => (
           <div
             key={`${i}-${src.slice(-24)}`}
@@ -104,14 +111,14 @@ export default function ImageUploader({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={src} alt={`Product image ${i + 1}`} className="w-full h-full object-cover" />
 
-            {i === 0 && (
+            {i === 0 && max > 1 && (
               <span className="absolute top-2 left-2 grad-bg text-white text-[9px] font-extrabold uppercase tracking-wider px-2 py-1 rounded-full shadow-sm">
                 Primary
               </span>
             )}
 
             <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition grid place-items-center gap-2 grid-flow-col">
-              {i !== 0 && (
+              {i !== 0 && max > 1 && (
                 <button
                   type="button"
                   onClick={() => makePrimary(i)}
@@ -145,7 +152,7 @@ export default function ImageUploader({
                 {busy ? <Loader2 size={18} className="animate-spin" /> : <Plus size={20} />}
               </span>
               <span className="text-[11.5px] font-extrabold text-gray-600 leading-tight">
-                {busy ? "Processing…" : images.length === 0 ? "Add main image" : "Add gallery image"}
+                {busy ? "Processing…" : images.length === 0 ? "Add main image" : label}
               </span>
               <span className="text-[10px] font-bold text-gray-400">{room} slot{room === 1 ? "" : "s"} left</span>
             </span>
@@ -183,7 +190,7 @@ export default function ImageUploader({
         </button>
         <span className="text-[11px] font-bold text-gray-400 inline-flex items-center gap-1.5">
           <ImagePlus size={13} />
-          First image is the primary one — up to {MAX_PRODUCT_IMAGES}
+          {max > 1 ? `First image is the primary one — up to ${max}` : "One image, square looks best"}
         </span>
       </div>
 

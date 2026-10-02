@@ -65,6 +65,7 @@ export default async function ProductPage({
           images,
           regularPrice: product.regularPrice,
           sellPrice: product.sellPrice,
+          freeDelivery: product.freeDelivery,
           stock: product.stock,
           categoryName: product.category?.name ?? "Product",
         }}

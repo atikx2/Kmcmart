@@ -137,6 +137,7 @@ export default function ProductClient({
                   image: product.image,
                   regularPrice: product.regularPrice,
                   sellPrice: product.sellPrice,
+                  freeDelivery: product.freeDelivery,
                 },
                 qty
               )
@@ -166,7 +167,11 @@ export default function ProductClient({
         {/* delivery perks */}
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           {[
-            { icon: Truck, title: "Home Delivery", sub: `Charge from ${taka(deliveryCharge)}` },
+            {
+              icon: Truck,
+              title: product.freeDelivery ? "Free Delivery" : "Home Delivery",
+              sub: product.freeDelivery ? "No delivery charge" : `Charge from ${taka(deliveryCharge)}`,
+            },
             { icon: BadgeCheck, title: "100% Genuine", sub: "Quality checked" },
             { icon: RotateCcw, title: "Easy Return", sub: "7 days replacement" },
           ].map(({ icon: Icon, title, sub }) => (

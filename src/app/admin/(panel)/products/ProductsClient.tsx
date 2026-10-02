@@ -81,12 +81,18 @@ function Th({
 const ACTION_BTN =
   "w-[30px] h-[30px] rounded-full grid place-items-center transition-all duration-200 shadow-[0_1px_3px_rgba(17,18,28,0.08)] hover:-translate-y-0.5 hover:shadow-[0_6px_14px_rgba(17,18,28,0.18)]";
 
-export default function ProductsClient({ initial }: { initial: AdminProductList }) {
+export default function ProductsClient({
+  initial,
+  initialCategoryId = 0,
+}: {
+  initial: AdminProductList;
+  initialCategoryId?: number;
+}) {
   const router = useRouter();
   const [toast, showToast] = useToast();
 
   const [stock, setStock] = useState<StockKey>("all");
-  const [categoryId, setCategoryId] = useState<number | 0>(0);
+  const [categoryId, setCategoryId] = useState<number | 0>(initialCategoryId);
   const [input, setInput] = useState("");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(0);

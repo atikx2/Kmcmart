@@ -153,4 +153,7 @@ export type ProductLite = {
   image: string;
   regularPrice: number;
   sellPrice: number | null;
+  /** When true this product ships free — the cart waives the delivery charge
+      as long as every item in it is a free-delivery product. */
+  freeDelivery: boolean;
 };

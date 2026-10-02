@@ -100,6 +100,7 @@ function toLite(p: Product): ProductLite {
     image: (p.images && p.images[0]) || "/assets/logo-header.svg",
     regularPrice: p.regularPrice,
     sellPrice: p.sellPrice,
+    freeDelivery: p.freeDelivery,
   };
 }
 

@@ -74,7 +74,11 @@ export async function POST(req: NextRequest) {
     });
 
     const subtotal = orderItems.reduce((a, i) => a + i.price * i.qty, 0);
-    const total = subtotal + area[0].charge;
+    /* Delivery is free only when every product in the order ships free.
+       Recomputed here so a tampered client payload cannot skip the charge. */
+    const shipsFree = items.every((i) => dbProducts.find((d) => d.id === i.id)?.freeDelivery === true);
+    const deliveryCharge = shipsFree ? 0 : area[0].charge;
+    const total = subtotal + deliveryCharge;
 
     const customer = await getSessionCustomer();
 
@@ -86,8 +90,8 @@ export async function POST(req: NextRequest) {
         customerName: customerName.trim(),
         phone: phone.trim(),
         address: address.trim(),
-        deliveryAreaName: area[0].name,
-        deliveryCharge: area[0].charge,
+        deliveryAreaName: shipsFree ? `${area[0].name} (Free delivery)` : area[0].name,
+        deliveryCharge,
         subtotal,
         total,
         items: orderItems,

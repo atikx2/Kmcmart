@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { ShoppingBag } from "lucide-react";
+import { ShoppingBag, Truck } from "lucide-react";
 import type { ProductLite } from "@/db/schema";
 import { discountPercent, effectivePrice, taka } from "@/lib/format";
 
@@ -22,6 +22,12 @@ export default function ProductCard({
     <div className="group h-full flex flex-col bg-white rounded-2xl border border-gray-100 shadow-[0_2px_12px_rgba(17,18,28,0.06)] hover:shadow-[0_16px_44px_rgba(17,18,28,0.14)] hover:-translate-y-1 transition-all duration-300 overflow-hidden">
       <Link href={`/product/${product.slug}`} className="relative block aspect-[4/4.4] md:aspect-[4/4.6] bg-gray-50 overflow-hidden">
         {pct !== null && <span className="offer-tag">{pct}% OFF</span>}
+        {product.freeDelivery && (
+          <span className="absolute top-2 right-2 z-[2] inline-flex items-center gap-1 bg-emerald-500 text-white text-[9px] md:text-[10px] font-extrabold uppercase tracking-wider px-2 py-1 rounded-full shadow-sm">
+            <Truck size={10} strokeWidth={2.6} />
+            Free
+          </span>
+        )}
         <Image
           src={product.image}
           alt={product.name}

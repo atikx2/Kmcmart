@@ -16,7 +16,7 @@ import {
   User,
 } from "lucide-react";
 import { taka } from "@/lib/format";
-import { useCart, type CartItem } from "@/components/site/Providers";
+import { cartShipsFree, useCart, type CartItem } from "@/components/site/Providers";
 
 type Area = { id: number; name: string; charge: number };
 
@@ -82,6 +82,7 @@ export default function CheckoutForm({
             image: data.item.image,
             price: data.item.sellPrice && data.item.sellPrice > 0 ? data.item.sellPrice : data.item.regularPrice,
             qty: buyQty,
+            freeDelivery: Boolean(data.item.freeDelivery),
           });
         } else {
           setBuyItem(null);
@@ -102,7 +103,10 @@ export default function CheckoutForm({
 
   const subtotal = useMemo(() => items.reduce((a, i) => a + i.price * i.qty, 0), [items]);
   const area = areas.find((a) => a.id === areaId) ?? null;
-  const total = subtotal + (area?.charge ?? 0);
+  /* Every line must ship free before we waive the charge — the API re-checks it. */
+  const shipsFree = cartShipsFree(items);
+  const deliveryCharge = shipsFree ? 0 : (area?.charge ?? 0);
+  const total = subtotal + deliveryCharge;
 
   const ready = mounted && (!buySlug || buyItem !== "loading");
   const empty = ready && items.length === 0;
@@ -229,6 +233,13 @@ export default function CheckoutForm({
               <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             </Field>
 
+            {shipsFree && (
+              <p className="-mt-1 flex items-center gap-2 text-[12px] font-extrabold text-emerald-600">
+                <Truck size={14} />
+                Every product in this order ships free — no delivery charge.
+              </p>
+            )}
+
             <Field label="Full Address" icon={MapPin} error={errors.address}>
               <textarea
                 className="field min-h-[96px] resize-none"
@@ -284,10 +295,23 @@ export default function CheckoutForm({
               <span>Subtotal</span>
               <span className="text-gray-800">{taka(subtotal)}</span>
             </div>
-            <div className="flex justify-between">
-              <span>Delivery ({area?.name ?? "—"})</span>
-              <span className="text-gray-800">{area ? taka(area.charge) : "—"}</span>
+            <div className="flex justify-between gap-3">
+              <span className="min-w-0 truncate">Delivery ({area?.name ?? "—"})</span>
+              {shipsFree ? (
+                <span className="shrink-0 flex items-center gap-1.5">
+                  <span className="text-gray-400 line-through">{area ? taka(area.charge) : ""}</span>
+                  <span className="text-emerald-600 font-extrabold">FREE</span>
+                </span>
+              ) : (
+                <span className="text-gray-800 shrink-0">{area ? taka(area.charge) : "—"}</span>
+              )}
             </div>
+            {shipsFree && (
+              <p className="flex items-center gap-2 text-[12px] font-extrabold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
+                <Truck size={14} />
+                Free delivery applied to this order
+              </p>
+            )}
             <div className="border-t border-dashed border-gray-200 pt-2.5 flex justify-between items-center">
               <span className="text-gray-800 font-extrabold">Total</span>
               <span className="grad-text font-display font-extrabold text-xl">{taka(total)}</span>

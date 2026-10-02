@@ -12,7 +12,7 @@ import {
 } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Minus, Plus, ShoppingBag, Trash2, X, ArrowRight } from "lucide-react";
+import { Minus, Plus, ShoppingBag, Trash2, Truck, X, ArrowRight } from "lucide-react";
 import type { ProductLite } from "@/db/schema";
 import { effectivePrice, taka } from "@/lib/format";
 
@@ -23,12 +23,21 @@ export type CartItem = {
   image: string;
   price: number;
   qty: number;
+  /** Older carts in localStorage may not have this — treat undefined as false. */
+  freeDelivery?: boolean;
 };
+
+/** Delivery is on the house only when every line in the cart ships free. */
+export function cartShipsFree(items: { freeDelivery?: boolean }[]): boolean {
+  return items.length > 0 && items.every((i) => i.freeDelivery === true);
+}
 
 type CartContextType = {
   items: CartItem[];
   count: number;
   subtotal: number;
+  /** True when the whole cart qualifies for free delivery. */
+  freeDelivery: boolean;
   addItem: (p: ProductLite, qty?: number) => void;
   setQty: (id: number, qty: number) => void;
   removeItem: (id: number) => void;
@@ -74,7 +83,7 @@ export default function Providers({ children }: { children: ReactNode }) {
       if (found) {
         return prev.map((i) => (i.id === p.id ? { ...i, qty: Math.min(i.qty + qty, 99) } : i));
       }
-      return [...prev, { id: p.id, slug: p.slug, name: p.name, image: p.image, price, qty }];
+      return [...prev, { id: p.id, slug: p.slug, name: p.name, image: p.image, price, qty, freeDelivery: p.freeDelivery }];
     });
     setOpen(true);
   }, []);
@@ -91,16 +100,17 @@ export default function Providers({ children }: { children: ReactNode }) {
 
   const clearCart = useCallback(() => setItems([]), []);
 
-  const { count, subtotal } = useMemo(() => {
+  const { count, subtotal, freeDelivery } = useMemo(() => {
     return {
       count: items.reduce((a, i) => a + i.qty, 0),
       subtotal: items.reduce((a, i) => a + i.qty * i.price, 0),
+      freeDelivery: cartShipsFree(items),
     };
   }, [items]);
 
   const value = useMemo(
-    () => ({ items, count, subtotal, addItem, setQty, removeItem, clearCart, open, setOpen }),
-    [items, count, subtotal, addItem, setQty, removeItem, clearCart, open]
+    () => ({ items, count, subtotal, freeDelivery, addItem, setQty, removeItem, clearCart, open, setOpen }),
+    [items, count, subtotal, freeDelivery, addItem, setQty, removeItem, clearCart, open]
   );
 
   return (
@@ -172,7 +182,15 @@ export default function Providers({ children }: { children: ReactNode }) {
                     </Link>
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] font-bold text-gray-800 truncate">{item.name}</p>
-                      <p className="grad-text font-extrabold text-sm mt-0.5">{taka(item.price)}</p>
+                      <p className="grad-text font-extrabold text-sm mt-0.5 flex items-center gap-1.5">
+                        {taka(item.price)}
+                        {item.freeDelivery && (
+                          <span className="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-1.5 py-[2px] rounded-full">
+                            <Truck size={9} />
+                            Free
+                          </span>
+                        )}
+                      </p>
                       <div className="flex items-center justify-between mt-1.5">
                         <div className="inline-flex items-center border border-gray-200 rounded-full bg-white">
                           <button
@@ -209,6 +227,18 @@ export default function Providers({ children }: { children: ReactNode }) {
                   <span className="text-gray-500 font-semibold">Subtotal</span>
                   <span className="font-display font-extrabold text-lg">{taka(subtotal)}</span>
                 </div>
+
+                {freeDelivery ? (
+                  <p className="flex items-center gap-2 text-[12px] font-extrabold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
+                    <Truck size={14} />
+                    Free delivery on this order
+                  </p>
+                ) : (
+                  <p className="flex items-center gap-2 text-[11.5px] font-semibold text-gray-400">
+                    <Truck size={13} />
+                    Delivery charge is added at checkout
+                  </p>
+                )}
                 <Link
                   href="/checkout"
                   onClick={() => setOpen(false)}

@@ -55,6 +55,7 @@ function pageTitle(pathname: string): string {
   if (pathname === "/admin/products/new") return "Add Product";
   if (/^\/admin\/products\/.+\/edit$/.test(pathname)) return "Edit Product";
   if (pathname.startsWith("/admin/products")) return "Product Management";
+  if (pathname.startsWith("/admin/categories")) return "Category Management";
   return "Admin Panel";
 }
 
@@ -64,7 +65,7 @@ const NAV: NavEntry[] = [
   { section: "Manage" },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { href: "/admin/products", label: "Products", icon: Package },
-  { label: "Categories", icon: Shapes, soon: true },
+  { href: "/admin/categories", label: "Categories", icon: Shapes },
   { label: "Banners", icon: Images, soon: true },
   { label: "Menus", icon: List, soon: true },
   { section: "System" },
