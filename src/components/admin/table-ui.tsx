@@ -7,6 +7,7 @@ export type IconCmp = React.ComponentType<{
   size?: number | string;
   className?: string;
   strokeWidth?: number;
+  style?: React.CSSProperties;
 }>;
 
 export function Th({

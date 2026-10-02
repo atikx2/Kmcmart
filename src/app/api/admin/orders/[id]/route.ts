@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { orders, type OrderItem } from "@/db/schema";
 import { guardAdmin } from "@/lib/admin-api";
-import { isOrderStatus } from "@/lib/admin-orders";
+import { isKnownOrderStatus } from "@/lib/admin-order-statuses";
 
 export const dynamic = "force-dynamic";
 
@@ -52,7 +52,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     const patch: Record<string, unknown> = {};
 
     if ("status" in body) {
-      if (!isOrderStatus(body.status)) {
+      if (!(await isKnownOrderStatus(body.status))) {
         return Response.json({ error: "Invalid status value" }, { status: 400 });
       }
       patch.status = body.status;

@@ -4,26 +4,26 @@ import { redirect } from "next/navigation";
 import { Package, Phone, ShoppingBag } from "lucide-react";
 import { getSessionCustomer } from "@/lib/auth";
 import { getOrdersForCustomer, getSiteText } from "@/lib/data";
+import { listOrderStatuses } from "@/lib/admin-order-statuses";
+import { statusLabel, statusTint } from "@/lib/order-status";
 import { taka } from "@/lib/format";
 import LogoutButton from "./LogoutButton";
 
 export const metadata: Metadata = { title: "My Account" };
 
-const statusStyle: Record<string, string> = {
-  pending: "bg-amber-50 text-amber-600",
-  confirmed: "bg-blue-50 text-blue-600",
-  delivered: "bg-emerald-50 text-emerald-600",
-  cancelled: "bg-red-50 text-red-500",
-};
-
 export default async function AccountPage() {
   const customer = await getSessionCustomer();
   if (!customer) redirect("/login");
 
-  const [myOrders, text] = await Promise.all([
+  const [myOrders, text, statuses] = await Promise.all([
     getOrdersForCustomer(customer.id, customer.phone),
     getSiteText(),
+    listOrderStatuses(),
   ]);
+
+  /* Status names are admin-entered data (like product names) — shown as typed,
+     never run through the en/bn dictionary. */
+  const statusColorFor = (key: string) => statuses.find((s) => s.key === key)?.color ?? "#6B7280";
 
   return (
     <div className="max-w-4xl mx-auto px-4 lg:px-6 py-8 md:py-12">
@@ -99,11 +99,10 @@ export default async function AccountPage() {
                   </div>
                   <div className="flex items-center gap-2.5">
                     <span
-                      className={`text-[10.5px] font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-full ${
-                        statusStyle[o.status] ?? "bg-gray-100 text-gray-500"
-                      }`}
+                      className="text-[10.5px] font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-full border"
+                      style={statusTint(statusColorFor(o.status))}
                     >
-                      {o.status}
+                      {statusLabel(statuses, o.status)}
                     </span>
                     <span className="font-display font-extrabold text-sm text-gray-900">{taka(o.total)}</span>
                   </div>

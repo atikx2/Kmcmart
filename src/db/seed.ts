@@ -7,6 +7,7 @@ import {
   categories,
   deliveryAreas,
   menus,
+  orderStatuses,
   orders,
   products,
   settings,
@@ -21,8 +22,16 @@ async function main() {
   console.log("Seeding database...");
 
   await db.execute(
-    sql`TRUNCATE TABLE orders, customers, products, categories, banners, menus, delivery_areas, settings, admins RESTART IDENTITY CASCADE`
+    sql`TRUNCATE TABLE orders, customers, products, categories, banners, menus, delivery_areas, order_statuses, settings, admins RESTART IDENTITY CASCADE`
   );
+
+  /* ---------------- order statuses ---------------- */
+  await db.insert(orderStatuses).values([
+    { key: "pending", label: "Pending", color: "#F59E0B", sortOrder: 1, isSystem: true },
+    { key: "confirmed", label: "On The Way", color: "#0EA5E9", sortOrder: 2, isSystem: true },
+    { key: "delivered", label: "Delivered", color: "#10B981", sortOrder: 3, isSystem: true },
+    { key: "cancelled", label: "Cancelled", color: "#F43F5E", sortOrder: 4, isSystem: true },
+  ]);
 
   /* ---------------- main admin ---------------- */
   await db.insert(admins).values({

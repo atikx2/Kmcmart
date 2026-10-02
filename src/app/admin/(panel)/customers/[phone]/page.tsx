@@ -19,7 +19,8 @@ import {
   X,
 } from "lucide-react";
 import { taka } from "@/lib/format";
-import { ORDER_STATUS_CHIP, ORDER_STATUS_LABEL, FRAUD_BAR, FRAUD_TEXT } from "@/lib/order-status";
+import { statusLabel, statusTint, FRAUD_BAR, FRAUD_TEXT } from "@/lib/order-status";
+import { listOrderStatuses } from "@/lib/admin-order-statuses";
 import { getAdminCustomer } from "@/lib/admin-customers";
 import { requirePermission } from "@/lib/admin-guard";
 import type { IconCmp } from "@/components/admin/table-ui";
@@ -64,8 +65,13 @@ export default async function AdminCustomerDetailPage({
   await requirePermission("customers");
 
   const { phone } = await params;
-  const customer = await getAdminCustomer(decodeURIComponent(phone));
+  const [customer, statuses] = await Promise.all([
+    getAdminCustomer(decodeURIComponent(phone)),
+    listOrderStatuses(),
+  ]);
   if (!customer) notFound();
+
+  const statusColorFor = (key: string) => statuses.find((s) => s.key === key)?.color ?? "#6B7280";
 
   return (
     <div className="space-y-4">
@@ -226,11 +232,10 @@ export default async function AdminCustomerDetailPage({
                   #{o.code}
                 </Link>
                 <span
-                  className={`text-[9.5px] font-extrabold uppercase tracking-wider px-2 py-[4px] rounded-full ring-1 ${
-                    ORDER_STATUS_CHIP[o.status] ?? "bg-gray-100 text-gray-500 ring-gray-200"
-                  }`}
+                  className="text-[9.5px] font-extrabold uppercase tracking-wider px-2 py-[4px] rounded-full border"
+                  style={statusTint(statusColorFor(o.status))}
                 >
-                  {ORDER_STATUS_LABEL[o.status] ?? o.status}
+                  {statusLabel(statuses, o.status)}
                 </span>
                 <span className="text-[11px] font-bold text-gray-400">{o.createdAt}</span>
                 <span className="ml-auto font-display font-extrabold text-[15px] grad-text whitespace-nowrap">

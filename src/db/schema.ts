@@ -113,6 +113,24 @@ export const deliveryAreas = pgTable("delivery_areas", {
   isActive: boolean("is_active").notNull().default(true),
 });
 
+/**
+ * Order status vocabulary the admin can extend.
+ * The four `isSystem` rows (pending / confirmed / delivered / cancelled) are
+ * seeded once and can never be deleted — reports, the dashboard and the fraud
+ * score all key off them. Everything else is a custom, admin-made status.
+ */
+export const orderStatuses = pgTable("order_statuses", {
+  id: serial("id").primaryKey(),
+  /** Stored in `orders.status` — slug, immutable once created. */
+  key: text("key").notNull().unique(),
+  label: text("label").notNull(),
+  /** Hex colour (#RRGGBB) used for the chip, dot and select. */
+  color: text("color").notNull().default("#6B7280"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isSystem: boolean("is_system").notNull().default(false),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
 export const admins = pgTable("admins", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().default(""),
@@ -166,6 +184,7 @@ export type Banner = typeof banners.$inferSelect;
 export type Category = typeof categories.$inferSelect;
 export type Product = typeof products.$inferSelect;
 export type DeliveryArea = typeof deliveryAreas.$inferSelect;
+export type OrderStatusRow = typeof orderStatuses.$inferSelect;
 export type Customer = typeof customers.$inferSelect;
 export type Order = typeof orders.$inferSelect;
 

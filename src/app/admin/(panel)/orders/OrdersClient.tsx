@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  CircleDot,
   CircleUserRound,
   Clock,
   Eye,
@@ -45,28 +46,27 @@ import {
   FRAUD_BAR,
   FRAUD_TEXT,
   ORDERS_PAGE_SIZES,
-  ORDER_STATUSES,
-  ORDER_STATUS_LABEL,
+  selectableStatuses,
+  statusColor,
+  statusLabel,
+  statusTint,
   type AdminOrderList,
   type AdminOrderRow,
   type OrderStatus,
+  type OrderStatusOption,
 } from "@/lib/order-status";
 import ConfirmModal from "@/components/admin/ConfirmModal";
 import InlineEdit from "@/components/admin/InlineEdit";
 import Toast, { useToast } from "@/components/admin/Toast";
 
-type TabKey = "all" | "pending" | "confirmed" | "delivered" | "cancelled";
+type IconCmp = React.ComponentType<{
+  size?: number | string;
+  className?: string;
+  strokeWidth?: number;
+  style?: React.CSSProperties;
+}>;
 
-const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ size?: number | string; className?: string }> }[] = [
-  { key: "all", label: "All", icon: ShoppingCart },
-  { key: "pending", label: "Pending", icon: Clock },
-  { key: "confirmed", label: "On The Way", icon: Truck },
-  { key: "delivered", label: "Delivered", icon: PackageCheck },
-  { key: "cancelled", label: "Cancelled", icon: XCircle },
-];
-
-type IconCmp = React.ComponentType<{ size?: number | string; className?: string; strokeWidth?: number }>;
-
+/* Icons for the four built-in keys — admin-made statuses get a neutral dot. */
 const STATUS_ICON: Record<string, IconCmp> = {
   pending: Clock,
   confirmed: Truck,
@@ -74,14 +74,7 @@ const STATUS_ICON: Record<string, IconCmp> = {
   cancelled: XCircle,
 };
 
-const STATUS_SELECT: Record<string, string> = {
-  pending: "border-amber-200 bg-amber-50 text-amber-700",
-  confirmed: "border-sky-200 bg-sky-50 text-sky-700",
-  delivered: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  cancelled: "border-rose-200 bg-rose-50 text-rose-600",
-};
-
-const EMPTY_TEXT: Record<TabKey, string> = {
+const EMPTY_TEXT: Record<string, string> = {
   all: "No orders yet — they will show up here the moment a customer checks out.",
   pending: "No pending orders right now. Everything is handled 🎉",
   confirmed: "No orders on the way at the moment.",
@@ -297,11 +290,30 @@ function ItemTiles({ items, count }: { items: AdminOrderRow["items"]; count: num
 
 /* ---------------- page ---------------- */
 
-export default function OrdersClient({ initial }: { initial: AdminOrderList }) {
+export default function OrdersClient({
+  initial,
+  statuses,
+}: {
+  initial: AdminOrderList;
+  statuses: OrderStatusOption[];
+}) {
   const router = useRouter();
   const [toast, showToast] = useToast();
 
-  const [status, setStatus] = useState<TabKey>("all");
+  /* "all" + every status the admin manages on the Delivery Area page. */
+  const tabs: { key: string; label: string; icon: IconCmp; color: string | null }[] = [
+    { key: "all", label: "All", icon: ShoppingCart, color: null },
+    ...statuses.map((s) => ({
+      key: s.key,
+      label: s.label,
+      icon: STATUS_ICON[s.key] ?? CircleDot,
+      color: s.color,
+    })),
+  ];
+  const colorOf = (key: string) => statusColor(statuses, key);
+  const labelOf = (key: string) => statusLabel(statuses, key);
+
+  const [status, setStatus] = useState<string>("all");
   const [input, setInput] = useState("");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(0);
@@ -328,7 +340,7 @@ export default function OrdersClient({ initial }: { initial: AdminOrderList }) {
   }, [input]);
 
   const load = useCallback(
-    async (nextStatus: TabKey, nextQ: string, nextPage: number, nextLimit: number) => {
+    async (nextStatus: string, nextQ: string, nextPage: number, nextLimit: number) => {
       const id = ++reqId.current;
       setLoading(true);
       try {
@@ -395,7 +407,7 @@ export default function OrdersClient({ initial }: { initial: AdminOrderList }) {
     patchRow(o.id, { status: next });
     try {
       await saveField(o.id, { status: next });
-      showToast("ok", `#${o.code} → ${ORDER_STATUS_LABEL[next]}`);
+      showToast("ok", `#${o.code} → ${labelOf(next)}`);
       router.refresh();
     } catch (e) {
       patchRow(o.id, { status: prev });
@@ -440,7 +452,7 @@ export default function OrdersClient({ initial }: { initial: AdminOrderList }) {
         "ok",
         action === "delete"
           ? `${json.affected} order(s) deleted`
-          : `${json.affected} order(s) → ${ORDER_STATUS_LABEL[bulkStatus ?? ""] ?? ""}`
+          : `${json.affected} order(s) → ${labelOf(bulkStatus ?? "")}`
       );
       setBulkDelete(false);
       if (action === "delete") setSelected([]);
@@ -471,7 +483,7 @@ export default function OrdersClient({ initial }: { initial: AdminOrderList }) {
       {/* ---------------- filters ---------------- */}
       <div className="bg-white rounded-3xl border border-gray-100 shadow-[0_4px_18px_rgba(17,18,28,0.05)] p-3 md:p-4">
         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-0.5">
-          {TABS.map(({ key, label, icon: Icon }) => {
+          {tabs.map(({ key, label, icon: Icon, color }) => {
             const active = status === key;
             return (
               <button
@@ -484,14 +496,18 @@ export default function OrdersClient({ initial }: { initial: AdminOrderList }) {
                   active ? "grad-bg text-white shadow-[0_8px_22px_rgba(255,61,119,0.3)]" : "bg-gray-50 text-gray-500 hover:bg-gray-100"
                 }`}
               >
-                <Icon size={15} className={active ? "text-white" : "text-gray-400"} />
-                {label}
+                <Icon
+                  size={15}
+                  className={active ? "text-white" : "text-gray-400"}
+                  style={active || !color ? undefined : { color }}
+                />
+                <span className="whitespace-nowrap">{label}</span>
                 <span
                   className={`min-w-[22px] h-5 px-1.5 rounded-full grid place-items-center text-[10.5px] font-extrabold ${
                     active ? "bg-white/25 text-white" : "bg-white text-gray-400 border border-gray-200"
                   }`}
                 >
-                  {data.counts[key]}
+                  {data.counts[key] ?? 0}
                 </span>
               </button>
             );
@@ -537,18 +553,20 @@ export default function OrdersClient({ initial }: { initial: AdminOrderList }) {
               value=""
               disabled={selected.length === 0 || working}
               onChange={(e) => {
-                const v = e.target.value as OrderStatus;
+                const v = e.target.value;
                 if (v) bulk("status", v);
                 e.target.value = "";
               }}
               className="appearance-none rounded-xl border-[1.5px] border-gray-200 bg-white pl-8 pr-7 py-2.5 text-[12px] font-extrabold text-gray-700 disabled:opacity-45 cursor-pointer hover:border-[var(--g1)] transition"
             >
               <option value="">Change status</option>
-              {ORDER_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {ORDER_STATUS_LABEL[s]}
-                </option>
-              ))}
+              {statuses
+                .filter((s) => s.isActive)
+                .map((s) => (
+                  <option key={s.key} value={s.key}>
+                    {s.label}
+                  </option>
+                ))}
             </select>
           </span>
 
@@ -621,7 +639,7 @@ export default function OrdersClient({ initial }: { initial: AdminOrderList }) {
             <span className="grad-bg text-white rounded-xl p-2 shrink-0">
               <ShoppingCart size={15} />
             </span>
-            <span className="truncate">{TABS.find((t) => t.key === status)?.label} Orders</span>
+            <span className="truncate">{tabs.find((t) => t.key === status)?.label ?? "All"} Orders</span>
           </h2>
           <span className="shrink-0 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider text-gray-400">
             {loading && <Loader2 size={13} className="animate-spin text-[var(--g2)]" />}
@@ -638,7 +656,9 @@ export default function OrdersClient({ initial }: { initial: AdminOrderList }) {
               {q ? "No orders matched your search" : "Nothing here"}
             </p>
             <p className="text-[13px] font-semibold text-gray-400 mt-1.5 max-w-[360px] mx-auto">
-              {q ? `No invoice, name or phone matches “${q}”.` : EMPTY_TEXT[status]}
+              {q
+                ? `No invoice, name or phone matches “${q}”.`
+                : (EMPTY_TEXT[status] ?? `No orders are marked “${labelOf(status)}” right now.`)}
             </p>
             {(q || status !== "all") && (
               <button
@@ -689,7 +709,7 @@ export default function OrdersClient({ initial }: { initial: AdminOrderList }) {
                   </thead>
                   <tbody>
                     {data.items.map((o, i) => {
-                      const StatusIcon = STATUS_ICON[o.status] ?? Clock;
+                      const StatusIcon = STATUS_ICON[o.status] ?? CircleDot;
                       const checked = selected.includes(o.id);
                       return (
                         <tr
@@ -832,18 +852,18 @@ export default function OrdersClient({ initial }: { initial: AdminOrderList }) {
                                   size={13}
                                   strokeWidth={2.6}
                                   className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                                  style={{ color: colorOf(o.status) }}
                                 />
                                 <select
                                   value={o.status}
                                   disabled={rowBusy === o.id}
-                                  onChange={(e) => changeStatus(o, e.target.value as OrderStatus)}
-                                  className={`w-full appearance-none rounded-xl border-[1.5px] pl-8 pr-7 py-2.5 text-[11.5px] font-extrabold cursor-pointer transition disabled:opacity-60 hover:shadow-[0_2px_8px_rgba(17,18,28,0.08)] ${
-                                    STATUS_SELECT[o.status] ?? "border-gray-200 bg-white text-gray-700"
-                                  }`}
+                                  onChange={(e) => changeStatus(o, e.target.value)}
+                                  style={statusTint(colorOf(o.status))}
+                                  className="w-full appearance-none rounded-xl border-[1.5px] pl-8 pr-7 py-2.5 text-[11.5px] font-extrabold cursor-pointer transition disabled:opacity-60 hover:shadow-[0_2px_8px_rgba(17,18,28,0.08)]"
                                 >
-                                  {ORDER_STATUSES.map((s) => (
-                                    <option key={s} value={s}>
-                                      {ORDER_STATUS_LABEL[s]}
+                                  {selectableStatuses(statuses, o.status).map((s) => (
+                                    <option key={s.key} value={s.key} className="text-gray-700">
+                                      {s.label}
                                     </option>
                                   ))}
                                 </select>

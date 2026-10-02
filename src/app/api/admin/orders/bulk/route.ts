@@ -3,7 +3,7 @@ import { inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { orders } from "@/db/schema";
 import { guardAdmin } from "@/lib/admin-api";
-import { isOrderStatus } from "@/lib/admin-orders";
+import { isKnownOrderStatus } from "@/lib/admin-order-statuses";
 
 export const dynamic = "force-dynamic";
 
@@ -25,12 +25,12 @@ export async function POST(req: NextRequest) {
     if (!ids) return Response.json({ error: `Select between 1 and ${MAX_IDS} orders` }, { status: 400 });
 
     if (body.action === "status") {
-      if (!isOrderStatus(body.status)) {
+      if (!(await isKnownOrderStatus(body.status))) {
         return Response.json({ error: "Invalid status value" }, { status: 400 });
       }
       const rows = await db
         .update(orders)
-        .set({ status: body.status })
+        .set({ status: String(body.status) })
         .where(inArray(orders.id, ids))
         .returning({ id: orders.id });
       return Response.json({ ok: true, affected: rows.length, status: body.status });

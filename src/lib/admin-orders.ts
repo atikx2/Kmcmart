@@ -1,10 +1,10 @@
 import { and, desc, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { orders } from "@/db/schema";
+import { loadOrderStatuses } from "@/lib/admin-order-statuses";
 import {
   formatOrderDateTime,
   fraudScore,
-  isOrderStatus,
   ORDERS_PAGE_SIZE,
   type AdminOrderDetail,
   type AdminOrderList,
@@ -66,7 +66,11 @@ export async function listAdminOrders(opts: {
   offset?: number;
   limit?: number;
 }): Promise<AdminOrderList> {
-  const status = isOrderStatus(opts.status) ? opts.status : null;
+  /* Only filter by a status the store actually knows about — "all", an empty
+     string or a deleted key all mean "no filter". */
+  const known = (await loadOrderStatuses()).items;
+  const wanted = (opts.status ?? "").trim();
+  const status = wanted && known.some((s) => s.key === wanted) ? wanted : null;
   const search = searchFilter(opts.q ?? undefined);
   const offset = Math.max(0, opts.offset ?? 0);
   const limit = Math.min(100, Math.max(1, opts.limit ?? ORDERS_PAGE_SIZE));
@@ -106,10 +110,11 @@ export async function listAdminOrders(opts: {
 
   const fraudMap = await getFraudScores(rows.map((r) => r.phone));
 
-  const counts: OrderCounts = { all: 0, pending: 0, confirmed: 0, delivered: 0, cancelled: 0 };
+  const counts: OrderCounts = { all: 0 };
+  for (const s of known) counts[s.key] = 0;
   for (const r of countRows) {
     counts.all += r.n;
-    if (isOrderStatus(r.status)) counts[r.status] = r.n;
+    counts[r.status] = (counts[r.status] ?? 0) + r.n;
   }
 
   const total = totalRows[0]?.n ?? 0;

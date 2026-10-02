@@ -4,13 +4,15 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Printer } from "lucide-react";
 import { taka } from "@/lib/format";
-import { ORDER_STATUS_LABEL, type AdminOrderDetail } from "@/lib/order-status";
+import { statusLabel, type AdminOrderDetail, type OrderStatusOption } from "@/lib/order-status";
 
 export default function PrintSheet({
   orders,
+  statuses,
   settings,
 }: {
   orders: AdminOrderDetail[];
+  statuses: OrderStatusOption[];
   settings: { siteName: string; phone: string; address: string; email: string };
 }) {
   useEffect(() => {
@@ -74,7 +76,7 @@ export default function PrintSheet({
                 <p className="font-display font-extrabold text-lg">INVOICE</p>
                 <p className="font-extrabold text-[13px]">#{o.code}</p>
                 <p className="text-[11px] text-gray-500 mt-0.5">{o.placedAt}</p>
-                <p className="text-[11px] text-gray-500">Status: {ORDER_STATUS_LABEL[o.status] ?? o.status}</p>
+                <p className="text-[11px] text-gray-500">Status: {statusLabel(statuses, o.status)}</p>
               </div>
             </div>
 

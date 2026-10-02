@@ -9,6 +9,7 @@ import {
   Check,
   CheckCircle2,
   ChevronDown,
+  CircleDot,
   ClipboardList,
   Clock,
   Globe,
@@ -32,11 +33,13 @@ import { taka } from "@/lib/format";
 import {
   FRAUD_BAR,
   FRAUD_TEXT,
-  ORDER_STATUSES,
-  ORDER_STATUS_CHIP,
-  ORDER_STATUS_LABEL,
+  selectableStatuses,
+  statusColor,
+  statusLabel,
+  statusTint,
   type AdminOrderDetail,
   type OrderStatus,
+  type OrderStatusOption,
 } from "@/lib/order-status";
 import type { OrderItem } from "@/db/schema";
 import ConfirmModal from "@/components/admin/ConfirmModal";
@@ -47,13 +50,6 @@ const STATUS_ICON: Record<string, React.ComponentType<{ size?: number | string; 
   confirmed: Truck,
   delivered: PackageCheck,
   cancelled: XCircle,
-};
-
-const STATUS_DOT: Record<string, string> = {
-  pending: "bg-amber-400",
-  confirmed: "bg-sky-400",
-  delivered: "bg-emerald-400",
-  cancelled: "bg-rose-400",
 };
 
 const TIMELINE = [
@@ -116,9 +112,11 @@ function Row({
 
 export default function OrderDetailClient({
   order,
+  statuses,
   startInEdit = false,
 }: {
   order: AdminOrderDetail;
+  statuses: OrderStatusOption[];
   startInEdit?: boolean;
 }) {
   const router = useRouter();
@@ -166,7 +164,7 @@ export default function OrderDetailClient({
       setStatus(next);
       setJustSaved(true);
       setTimeout(() => setJustSaved(false), 2200);
-      showToast("ok", `Status changed to “${ORDER_STATUS_LABEL[next]}”`);
+      showToast("ok", `Status changed to “${statusLabel(statuses, next)}”`);
       router.refresh();
     } catch (e) {
       showToast("err", e instanceof Error ? e.message : "Could not update status");
@@ -246,7 +244,8 @@ export default function OrderDetailClient({
 
   const active = timelineIndex(status);
   const cancelled = status === "cancelled";
-  const CurrentIcon = STATUS_ICON[status] ?? Clock;
+  const CurrentIcon = STATUS_ICON[status] ?? CircleDot;
+  const currentColor = statusColor(statuses, status);
   const fraud = order.fraud;
 
   const inputCls =
@@ -280,11 +279,10 @@ export default function OrderDetailClient({
           </div>
 
           <span
-            className={`ml-auto text-[10.5px] font-extrabold uppercase tracking-wide px-3 py-1.5 rounded-full whitespace-nowrap ${
-              ORDER_STATUS_CHIP[status] ?? "bg-gray-100 text-gray-500"
-            }`}
+            className="ml-auto text-[10.5px] font-extrabold uppercase tracking-wide px-3 py-1.5 rounded-full whitespace-nowrap border"
+            style={statusTint(currentColor)}
           >
-            {ORDER_STATUS_LABEL[status] ?? status}
+            {statusLabel(statuses, status)}
           </span>
         </div>
 
@@ -295,9 +293,9 @@ export default function OrderDetailClient({
               onClick={() => setOpen((v) => !v)}
               className="w-full flex items-center gap-2.5 rounded-2xl border-[1.5px] border-gray-200 hover:border-[var(--g1)] bg-[#fbfbfe] px-4 py-3 text-[13px] font-extrabold text-gray-700 transition"
             >
-              <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${STATUS_DOT[status] ?? "bg-gray-300"}`} />
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: currentColor }} />
               <CurrentIcon size={16} className="text-[var(--g2)] shrink-0" />
-              <span className="flex-1 text-left truncate">Status: {ORDER_STATUS_LABEL[status] ?? status}</span>
+              <span className="flex-1 text-left truncate">Status: {statusLabel(statuses, status)}</span>
               {justSaved ? (
                 <Check size={16} className="text-emerald-500 shrink-0" />
               ) : (
@@ -307,24 +305,24 @@ export default function OrderDetailClient({
 
             {open && (
               <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 bg-white rounded-2xl border border-gray-100 shadow-[0_20px_60px_rgba(17,18,28,0.16)] overflow-hidden animate-slide-down">
-                {ORDER_STATUSES.map((s) => {
-                  const Icon = STATUS_ICON[s];
-                  const isCurrent = s === status;
+                {selectableStatuses(statuses, status).map((s) => {
+                  const Icon = STATUS_ICON[s.key] ?? CircleDot;
+                  const isCurrent = s.key === status;
                   return (
                     <button
-                      key={s}
-                      onClick={() => changeStatus(s)}
+                      key={s.key}
+                      onClick={() => changeStatus(s.key)}
                       disabled={saving !== null}
                       className={`w-full flex items-center gap-3 px-4 py-3 text-[13px] font-bold transition disabled:opacity-60 ${
                         isCurrent ? "bg-gray-50 text-gray-900" : "text-gray-600 hover:bg-gray-50"
                       }`}
                     >
-                      <span className="grad-soft rounded-lg p-2 text-[var(--g2)]">
+                      <span className="rounded-lg p-2 border" style={statusTint(s.color)}>
                         <Icon size={14} />
                       </span>
-                      {ORDER_STATUS_LABEL[s]}
+                      {s.label}
                       {isCurrent && <Check size={15} className="ml-auto text-emerald-500" />}
-                      {saving === s && (
+                      {saving === s.key && (
                         <span className="ml-auto w-3.5 h-3.5 rounded-full border-2 border-gray-200 border-t-[var(--g2)] animate-spin" />
                       )}
                     </button>

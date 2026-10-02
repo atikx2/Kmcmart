@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSessionAdmin } from "@/lib/admin-auth";
 import { getAdminOrdersByIds } from "@/lib/admin-orders";
+import { listOrderStatuses } from "@/lib/admin-order-statuses";
 import { getSettings } from "@/lib/data";
 import PrintSheet from "./PrintSheet";
 
@@ -28,7 +29,17 @@ export default async function AdminPrintPage({
     .filter((n) => Number.isInteger(n) && n > 0)
     .slice(0, 200);
 
-  const [orders, settings] = await Promise.all([getAdminOrdersByIds(ids), getSettings()]);
+  const [orders, settings, statuses] = await Promise.all([
+    getAdminOrdersByIds(ids),
+    getSettings(),
+    listOrderStatuses(),
+  ]);
 
-  return <PrintSheet orders={orders} settings={{ siteName: settings.siteName, phone: settings.phone, address: settings.address, email: settings.email }} />;
+  return (
+    <PrintSheet
+      orders={orders}
+      statuses={statuses}
+      settings={{ siteName: settings.siteName, phone: settings.phone, address: settings.address, email: settings.email }}
+    />
+  );
 }
