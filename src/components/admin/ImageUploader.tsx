@@ -14,10 +14,9 @@ import {
 import { MAX_PRODUCT_IMAGES } from "@/lib/product-admin";
 
 /** Resize + re-encode in the browser so uploads stay small. */
-async function compress(file: File): Promise<string> {
-  const MAX_EDGE = 900;
+async function compress(file: File, maxEdge: number, maxBytes: number): Promise<string> {
   const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+  const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
   const w = Math.round(bitmap.width * scale);
   const h = Math.round(bitmap.height * scale);
 
@@ -29,9 +28,9 @@ async function compress(file: File): Promise<string> {
   ctx.drawImage(bitmap, 0, 0, w, h);
   bitmap.close?.();
 
-  for (const q of [0.8, 0.7, 0.6, 0.5]) {
+  for (const q of [0.8, 0.7, 0.6, 0.5, 0.4]) {
     const url = canvas.toDataURL("image/webp", q);
-    if (url.length < 420_000) return url;
+    if (url.length < maxBytes) return url;
   }
   throw new Error("That image is too large — try a smaller one");
 }
@@ -42,13 +41,23 @@ export default function ImageUploader({
   max = MAX_PRODUCT_IMAGES,
   label = "Add gallery image",
   columns = "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4",
+  tile = "aspect-square",
+  maxEdge = 900,
+  maxBytes = 420_000,
+  hint,
 }: {
   images: string[];
   onChange: (next: string[]) => void;
-  /** Cap the number of images — categories only keep one. */
+  /** Cap the number of images — categories and banners only keep one. */
   max?: number;
   label?: string;
   columns?: string;
+  /** Preview tile ratio, e.g. "aspect-[3/1]" for hero banners. */
+  tile?: string;
+  /** Longest edge kept after compression — banners need more than products. */
+  maxEdge?: number;
+  maxBytes?: number;
+  hint?: string;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -67,7 +76,7 @@ export default function ImageUploader({
       const next: string[] = [];
       for (const f of picked) {
         if (!f.type.startsWith("image/")) continue;
-        next.push(await compress(f));
+        next.push(await compress(f, maxEdge, maxBytes));
       }
       if (next.length) onChange([...images, ...next]);
     } catch (e) {
@@ -106,7 +115,7 @@ export default function ImageUploader({
         {images.map((src, i) => (
           <div
             key={`${i}-${src.slice(-24)}`}
-            className="group relative aspect-square rounded-2xl overflow-hidden bg-gray-50 ring-1 ring-gray-200"
+            className={`group relative ${tile} rounded-2xl overflow-hidden bg-gray-50 ring-1 ring-gray-200`}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={src} alt={`Product image ${i + 1}`} className="w-full h-full object-cover" />
@@ -145,7 +154,7 @@ export default function ImageUploader({
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={busy}
-            className="aspect-square rounded-2xl border-[2px] border-dashed border-gray-200 hover:border-[var(--g1)] bg-[#fbfbfe] hover:bg-[color-mix(in_srgb,var(--g1)_6%,white)] transition grid place-items-center text-center px-3 disabled:opacity-60"
+            className={`${tile} rounded-2xl border-[2px] border-dashed border-gray-200 hover:border-[var(--g1)] bg-[#fbfbfe] hover:bg-[color-mix(in_srgb,var(--g1)_6%,white)] transition grid place-items-center text-center px-3 disabled:opacity-60`}
           >
             <span className="flex flex-col items-center gap-2">
               <span className="w-11 h-11 rounded-2xl grad-soft grid place-items-center text-[var(--g2)]">
@@ -190,7 +199,7 @@ export default function ImageUploader({
         </button>
         <span className="text-[11px] font-bold text-gray-400 inline-flex items-center gap-1.5">
           <ImagePlus size={13} />
-          {max > 1 ? `First image is the primary one — up to ${max}` : "One image, square looks best"}
+          {hint ?? (max > 1 ? `First image is the primary one — up to ${max}` : "One image, square looks best")}
         </span>
       </div>
 

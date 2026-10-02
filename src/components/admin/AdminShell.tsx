@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  ChartColumn,
   ChevronDown,
   Images,
   KeyRound,
@@ -22,7 +23,9 @@ import {
   ShieldCheck,
   ShoppingCart,
   Store,
+  Truck,
   Users,
+  Webhook,
   X,
 } from "lucide-react";
 import { NAV_COOKIE, NAV_COOKIE_MAX_AGE } from "@/lib/admin-ui";
@@ -56,6 +59,11 @@ function pageTitle(pathname: string): string {
   if (/^\/admin\/products\/.+\/edit$/.test(pathname)) return "Edit Product";
   if (pathname.startsWith("/admin/products")) return "Product Management";
   if (pathname.startsWith("/admin/categories")) return "Category Management";
+  if (pathname.startsWith("/admin/banners")) return "Banner Management";
+  if (pathname.startsWith("/admin/menus")) return "Header Menu";
+  if (pathname.startsWith("/admin/delivery-areas")) return "Delivery Area";
+  if (pathname.startsWith("/admin/reports")) return "Report";
+  if (pathname.startsWith("/admin/api")) return "API Integrations";
   return "Admin Panel";
 }
 
@@ -66,9 +74,12 @@ const NAV: NavEntry[] = [
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/categories", label: "Categories", icon: Shapes },
-  { label: "Banners", icon: Images, soon: true },
-  { label: "Menus", icon: List, soon: true },
+  { href: "/admin/banners", label: "Banners", icon: Images },
+  { href: "/admin/menus", label: "Menus", icon: List },
+  { href: "/admin/delivery-areas", label: "Delivery Area", icon: Truck },
   { section: "System" },
+  { href: "/admin/reports", label: "Report", icon: ChartColumn, soon: true },
+  { href: "/admin/api", label: "API", icon: Webhook, soon: true },
   { label: "Customers", icon: Users, soon: true },
   { label: "Roles", icon: ShieldCheck, soon: true },
   { label: "Site Settings", icon: Settings, soon: true },
@@ -323,7 +334,7 @@ export default function AdminShell({
           active ? "grad-bg text-white shadow-[0_8px_22px_rgba(255,61,119,0.35)]" : "text-gray-600 hover:bg-gray-50"
         } ${isCollapsed ? "justify-center px-0" : ""}`;
 
-        return entry.soon ? (
+        return entry.soon && !entry.href ? (
           <span key={entry.label} title={entry.label} className={`${cls} cursor-not-allowed opacity-70`}>
             {inner}
           </span>

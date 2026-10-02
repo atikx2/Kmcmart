@@ -27,7 +27,7 @@ export const getSettings = unstable_cache(
     return rows[0];
   },
   ["settings"],
-  { revalidate: 60 }
+  { revalidate: 60, tags: ["settings"] }
 );
 
 export const getMenus = unstable_cache(
@@ -39,7 +39,7 @@ export const getMenus = unstable_cache(
       .orderBy(asc(menus.sortOrder), asc(menus.id));
   },
   ["menus"],
-  { revalidate: 60 }
+  { revalidate: 60, tags: ["menus"] }
 );
 
 export const getBanners = unstable_cache(
@@ -51,7 +51,7 @@ export const getBanners = unstable_cache(
       .orderBy(asc(banners.sortOrder), asc(banners.id));
   },
   ["banners"],
-  { revalidate: 60 }
+  { revalidate: 60, tags: ["banners"] }
 );
 
 export const getCategories = unstable_cache(
@@ -63,7 +63,7 @@ export const getCategories = unstable_cache(
       .orderBy(asc(categories.sortOrder), asc(categories.id));
   },
   ["categories"],
-  { revalidate: 60 }
+  { revalidate: 60, tags: ["categories"] }
 );
 
 export const getHomeCategories = unstable_cache(
@@ -75,7 +75,7 @@ export const getHomeCategories = unstable_cache(
       .orderBy(asc(categories.sortOrder), asc(categories.id));
   },
   ["home-categories"],
-  { revalidate: 60 }
+  { revalidate: 60, tags: ["home-categories"] }
 );
 
 export const getDeliveryAreas = unstable_cache(
@@ -87,7 +87,7 @@ export const getDeliveryAreas = unstable_cache(
       .orderBy(asc(deliveryAreas.sortOrder), asc(deliveryAreas.id));
   },
   ["delivery-areas"],
-  { revalidate: 60 }
+  { revalidate: 60, tags: ["delivery-areas"] }
 );
 
 /* ---------------- products ---------------- */
