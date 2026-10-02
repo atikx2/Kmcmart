@@ -46,7 +46,6 @@ import {
   FRAUD_TEXT,
   ORDERS_PAGE_SIZES,
   ORDER_STATUSES,
-  ORDER_STATUS_CHIP,
   ORDER_STATUS_LABEL,
   type AdminOrderList,
   type AdminOrderRow,
@@ -254,6 +253,12 @@ function ActionPad({
   );
 }
 
+/** Long product names used to stretch the row — show the first two words only. */
+function shortName(name: string): string {
+  const words = name.trim().split(/\s+/);
+  return words.length <= 2 ? name : `${words.slice(0, 2).join(" ")}…`;
+}
+
 function ItemTiles({ items, count }: { items: AdminOrderRow["items"]; count: number }) {
   const shown = items.slice(0, 2);
   const rest = count - shown.reduce((a, i) => a + i.qty, 0);
@@ -273,10 +278,10 @@ function ItemTiles({ items, count }: { items: AdminOrderRow["items"]; count: num
             </span>
           </span>
           <span
-            className="mt-1.5 block text-[10.5px] font-bold text-gray-700 leading-tight line-clamp-2"
+            className="mt-1.5 block text-[10.5px] font-bold text-gray-700 leading-tight truncate"
             title={it.name}
           >
-            {it.name}
+            {shortName(it.name)}
           </span>
         </div>
       ))}
@@ -822,20 +827,17 @@ export default function OrdersClient({ initial }: { initial: AdminOrderList }) {
                           {/* status */}
                           <td className="px-3 py-4">
                             <div className="w-[130px]">
-                              <span
-                                className={`inline-flex items-center gap-1.5 text-[9.5px] font-extrabold uppercase tracking-[0.1em] px-2.5 py-[5px] rounded-full mb-2 ${
-                                  ORDER_STATUS_CHIP[o.status] ?? "bg-gray-100 text-gray-500"
-                                }`}
-                              >
-                                <StatusIcon size={11} strokeWidth={2.6} />
-                                {ORDER_STATUS_LABEL[o.status] ?? o.status}
-                              </span>
                               <span className="relative block">
+                                <StatusIcon
+                                  size={13}
+                                  strokeWidth={2.6}
+                                  className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                                />
                                 <select
                                   value={o.status}
                                   disabled={rowBusy === o.id}
                                   onChange={(e) => changeStatus(o, e.target.value as OrderStatus)}
-                                  className={`w-full appearance-none rounded-xl border-[1.5px] pl-2.5 pr-7 py-2 text-[11.5px] font-extrabold cursor-pointer transition disabled:opacity-60 hover:shadow-[0_2px_8px_rgba(17,18,28,0.08)] ${
+                                  className={`w-full appearance-none rounded-xl border-[1.5px] pl-8 pr-7 py-2.5 text-[11.5px] font-extrabold cursor-pointer transition disabled:opacity-60 hover:shadow-[0_2px_8px_rgba(17,18,28,0.08)] ${
                                     STATUS_SELECT[o.status] ?? "border-gray-200 bg-white text-gray-700"
                                   }`}
                                 >

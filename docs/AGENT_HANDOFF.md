@@ -148,6 +148,14 @@ One page, section cards, single "Save Changes" sticky button (grad-bg), success 
 2) Contact & Social (footer): phone, email, address, facebook, instagram, youtube, whatsapp.
 3) Appearance: colorFrom + colorTo with <input type="color"> + big gradient preview bar + live preview of a button + "Applies site-wide instantly (titles, buttons, ribbons)".
 4) Storefront Text: categoryTitle, categorySubtitle, allProductsTitle, buyNowText ("Buy Now" button label everywhere).
+5) Admin Panel section → "Sidebar menu behaviour" radio/select with 3 choices:
+   - Always expanded (labels + icons)
+   - Always collapsed (icon rail only)
+   - Remember my last choice  ← current behaviour, keep as the default
+   Add settings.adminMenuMode text column ("expanded" | "collapsed" | "remember"),
+   read it in src/app/admin/(panel)/layout.tsx next to the kmc_admin_nav cookie
+   (cookie only wins when the mode is "remember") and pass defaultCollapsed to
+   AdminShell. Applies to both the desktop sidebar and the mobile icon rail.
 
 API: PUT /api/admin/settings (guard admin) → update settings row id=1 → revalidatePath("/", "layout"). Settings are already wired end-to-end (root layout injects --g1/--g2 vars, header/footer/sections read all fields) — you only build the form.
 ```
