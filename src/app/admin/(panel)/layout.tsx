@@ -5,6 +5,7 @@ import { getSessionAdmin } from "@/lib/admin-auth";
 import { getPendingOrdersCount } from "@/lib/admin-data";
 import { getSettings } from "@/lib/data";
 import AdminShell from "@/components/admin/AdminShell";
+import SecurityBanner from "@/components/admin/SecurityBanner";
 import { NAV_COOKIE } from "@/lib/admin-ui";
 
 export const metadata: Metadata = { title: "Admin Panel" };
@@ -40,6 +41,7 @@ export default async function AdminPanelLayout({
       defaultCollapsed={defaultCollapsed}
       menuMode={mode}
     >
+      <SecurityBanner authSecretSet={Boolean(process.env.AUTH_SECRET)} />
       {children}
     </AdminShell>
   );

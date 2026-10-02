@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { settings } from "@/db/schema";
 import type { Settings } from "@/db/schema";
 import { cleanOverrides, isLang, LEGACY_TEXT_COLUMNS, overrideKey, UI_TEXT } from "@/lib/i18n";
+import { isMissingSchema } from "@/lib/pg-error";
 
 export const ADMIN_MENU_MODES = ["expanded", "collapsed", "remember"] as const;
 export type AdminMenuMode = (typeof ADMIN_MENU_MODES)[number];
@@ -12,9 +13,28 @@ export function isMenuMode(v: unknown): v is AdminMenuMode {
 }
 
 /** Settings always live in a single row. */
-export async function getSettingsRow(): Promise<Settings> {
-  const rows = await db.select().from(settings).limit(1);
-  return rows[0];
+/**
+ * The editable row. Unlike the storefront copy this one does not paper over
+ * a failure — the admin needs to be told that a migration is outstanding,
+ * otherwise they would edit fields that silently cannot be saved.
+ */
+export async function getSettingsRow(): Promise<{ row: Settings | null; error: string }> {
+  try {
+    const rows = await db.select().from(settings).limit(1);
+    if (!rows[0]) {
+      return { row: null, error: "The settings table is empty — insert a row before editing." };
+    }
+    return { row: rows[0], error: "" };
+  } catch (e) {
+    if (isMissingSchema(e)) {
+      return {
+        row: null,
+        error:
+          "Your database is missing columns this page needs. Run the settings migration SQL (docs/sql/012-settings-step7.sql), then reload.",
+      };
+    }
+    throw e;
+  }
 }
 
 const HEX = /^#[0-9a-fA-F]{6}$/;

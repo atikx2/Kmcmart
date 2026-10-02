@@ -8,7 +8,9 @@ export async function GET() {
   const denied = await guardAdmin("settings");
   if (denied) return denied;
   try {
-    return Response.json({ settings: await getSettingsRow() });
+    const { row, error } = await getSettingsRow();
+    if (!row) return fail(error || "Settings row is missing", 503);
+    return Response.json({ settings: row });
   } catch (e) {
     console.error(e);
     return fail("Failed to load settings", 500);
@@ -20,8 +22,8 @@ export async function PUT(req: NextRequest) {
   if (denied) return denied;
 
   try {
-    const current = await getSettingsRow();
-    if (!current) return fail("Settings row is missing", 404);
+    const { row: current, error } = await getSettingsRow();
+    if (!current) return fail(error || "Settings row is missing", 503);
 
     const body = (await req.json()) as Record<string, unknown>;
     const patch = buildSettingsPatch(body, current);

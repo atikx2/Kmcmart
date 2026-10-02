@@ -1,3 +1,4 @@
+import { isMissingTable } from "@/lib/pg-error";
 import { desc, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { fraudConfig, fraudReports, orders, type FraudConfigRow, type FraudReportRow } from "@/db/schema";
@@ -28,14 +29,6 @@ export function isFraudError(x: FraudCheckReport | FraudError): x is FraudError 
   return typeof (x as FraudError).status === "number";
 }
 
-function isMissingTable(e: unknown): boolean {
-  let cur: unknown = e;
-  for (let i = 0; i < 5 && cur; i++) {
-    if (typeof cur === "object" && (cur as { code?: string }).code === "42P01") return true;
-    cur = (cur as { cause?: unknown }).cause;
-  }
-  return false;
-}
 
 /* ------------------------------------------------------------------ */
 /* configuration                                                        */

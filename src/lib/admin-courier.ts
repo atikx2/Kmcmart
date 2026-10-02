@@ -1,3 +1,4 @@
+import { isMissingTable } from "@/lib/pg-error";
 import { and, eq, inArray, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { courierConfig, orders, type CourierConfigRow } from "@/db/schema";
@@ -32,14 +33,6 @@ const TIMEOUT_MS = 20_000;
 /* configuration row                                                    */
 /* ------------------------------------------------------------------ */
 
-function isMissingTable(e: unknown): boolean {
-  let cur: unknown = e;
-  for (let i = 0; i < 5 && cur; i++) {
-    if (typeof cur === "object" && (cur as { code?: string }).code === "42P01") return true;
-    cur = (cur as { cause?: unknown }).cause;
-  }
-  return false;
-}
 
 export type CourierState = { row: CourierConfigRow | null; ready: boolean };
 

@@ -23,14 +23,64 @@ import { dbImageUrl } from "@/lib/format";
 
 /* ---------------- settings / layout data (cached) ---------------- */
 
+/**
+ * Every page on the site reads this, so it must never be the thing that
+ * takes the site down. A settings table that is empty, or one missing a
+ * column because a migration has not been run yet, now falls back to the
+ * shipped defaults and logs instead of throwing a 500 on the storefront.
+ */
+const DEFAULT_SETTINGS: Settings = {
+  id: 1,
+  siteName: "Kmcmartbd",
+  logoHeader: "/assets/logo-header.svg",
+  logoFooter: "/assets/logo-footer.svg",
+  slogan: "Smart shopping, happy living — everything you need at your door.",
+  phone: "+880 1700-112233",
+  email: "support@kmcmartbd.com",
+  address: "Dhaka, Bangladesh",
+  facebook: "#",
+  instagram: "#",
+  youtube: "#",
+  whatsapp: "#",
+  colorFrom: "#FF7A00",
+  colorTo: "#FF3D77",
+  allProductsTitle: "All Products",
+  categoryTitle: "Shop by Category",
+  categorySubtitle: "Find your favourites from our wide range of collections",
+  buyNowText: "Buy Now",
+  metaTitle: "",
+  metaDescription: "",
+  favicon: "/favicon.ico",
+  logoMode: "image",
+  logoText: "",
+  language: "en",
+  textOverrides: {},
+  adminMenuMode: "remember",
+};
+
 export const getSettings = unstable_cache(
   async (): Promise<Settings> => {
-    const rows = await db.select().from(settings).limit(1);
-    return rows[0];
+    try {
+      const rows = await db.select().from(settings).limit(1);
+      /* A column added by a migration that has not been run yet comes back
+         as undefined; spreading over the defaults keeps every field present. */
+      return rows[0] ? { ...DEFAULT_SETTINGS, ...stripUndefined(rows[0]) } : DEFAULT_SETTINGS;
+    } catch (e) {
+      console.error("settings unavailable, using defaults:", e);
+      return DEFAULT_SETTINGS;
+    }
   },
   ["settings"],
   { revalidate: 60, tags: ["settings"] }
 );
+
+function stripUndefined<T extends object>(row: T): Partial<T> {
+  const out: Partial<T> = {};
+  for (const [k, v] of Object.entries(row)) {
+    if (v !== undefined && v !== null) (out as Record<string, unknown>)[k] = v;
+  }
+  return out;
+}
 
 /** Storefront strings for the language chosen in Site Settings. */
 export async function getSiteText(): Promise<SiteText> {

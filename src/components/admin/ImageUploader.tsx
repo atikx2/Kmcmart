@@ -67,18 +67,26 @@ export default function ImageUploader({
 
   const room = max - images.length;
 
+  /* A one-slot uploader — logo, favicon, category, banner — is a *replace*
+     control, not an *add* control. It always starts with something in it
+     (the shipped logo, the default favicon), so treating a full slot as
+     "no room" left the upload buttons permanently greyed out and the only
+     way in was to spot the delete button hidden behind a hover. */
+  const single = max === 1;
+  const canAdd = single || room > 0;
+
   const addFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setError("");
     setBusy(true);
     try {
-      const picked = Array.from(files).slice(0, Math.max(0, room));
+      const picked = Array.from(files).slice(0, single ? 1 : Math.max(0, room));
       const next: string[] = [];
       for (const f of picked) {
         if (!f.type.startsWith("image/")) continue;
         next.push(await compress(f, maxEdge, maxBytes));
       }
-      if (next.length) onChange([...images, ...next]);
+      if (next.length) onChange(single ? [next[0]] : [...images, ...next]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed");
     } finally {
@@ -94,7 +102,7 @@ export default function ImageUploader({
       setError("Image links must start with http:// or https://");
       return;
     }
-    onChange([...images, v].slice(0, max));
+    onChange(single ? [v] : [...images, v].slice(0, max));
     setUrl("");
     setUrlOpen(false);
     setError("");
@@ -126,7 +134,9 @@ export default function ImageUploader({
               </span>
             )}
 
-            <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition grid place-items-center gap-2 grid-flow-col">
+            {/* Phones have no hover, so the controls stay visible below sm —
+                otherwise the only way to change an image is undiscoverable. */}
+            <div className="absolute inset-0 bg-black/45 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition grid place-items-center gap-2 grid-flow-col">
               {i !== 0 && max > 1 && (
                 <button
                   type="button"
@@ -163,7 +173,9 @@ export default function ImageUploader({
               <span className="text-[11.5px] font-extrabold text-gray-600 leading-tight">
                 {busy ? "Processing…" : images.length === 0 ? "Add main image" : label}
               </span>
-              <span className="text-[10px] font-bold text-gray-400">{room} slot{room === 1 ? "" : "s"} left</span>
+              <span className="text-[10px] font-bold text-gray-400">
+                {max === 1 ? "1 image" : `${room} slot${room === 1 ? "" : "s"} left`}
+              </span>
             </span>
           </button>
         )}
@@ -173,7 +185,7 @@ export default function ImageUploader({
         ref={inputRef}
         type="file"
         accept="image/*"
-        multiple
+        multiple={!single}
         hidden
         onChange={(e) => addFiles(e.target.files)}
       />
@@ -182,16 +194,16 @@ export default function ImageUploader({
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          disabled={busy || room <= 0}
+          disabled={busy || !canAdd}
           className="inline-flex items-center gap-2 rounded-xl grad-bg text-white px-4 py-2.5 text-[12px] font-extrabold hover:opacity-90 transition disabled:opacity-45"
         >
           <Upload size={14} />
-          Upload from device
+          {single && images.length > 0 ? "Replace image" : "Upload from device"}
         </button>
         <button
           type="button"
           onClick={() => setUrlOpen((v) => !v)}
-          disabled={room <= 0}
+          disabled={!canAdd}
           className="inline-flex items-center gap-2 rounded-xl border-[1.5px] border-gray-200 px-4 py-2.5 text-[12px] font-extrabold text-gray-600 hover:border-[var(--g1)] hover:text-[var(--g2)] transition disabled:opacity-45"
         >
           <Link2 size={14} />

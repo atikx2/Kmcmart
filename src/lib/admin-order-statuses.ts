@@ -1,3 +1,4 @@
+import { isMissingTable } from "@/lib/pg-error";
 import { asc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { orderStatuses, orders } from "@/db/schema";
@@ -27,17 +28,6 @@ export type OrderStatusState = {
   ready: boolean;
 };
 
-function isMissingTable(e: unknown): boolean {
-  /* 42P01 = undefined_table. Until the migration SQL runs on the live DB the
-     storefront and the admin must keep working on the built-in defaults.
-     Drizzle wraps the pg error, so walk the cause chain. */
-  let cur: unknown = e;
-  for (let i = 0; i < 5 && cur; i++) {
-    if (typeof cur === "object" && (cur as { code?: string }).code === "42P01") return true;
-    cur = (cur as { cause?: unknown }).cause;
-  }
-  return false;
-}
 
 /** Reads the table, falling back to the shipped defaults when it is missing. */
 export async function loadOrderStatuses(): Promise<OrderStatusState> {

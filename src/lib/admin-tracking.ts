@@ -1,3 +1,4 @@
+import { isMissingTable } from "@/lib/pg-error";
 import { unstable_cache } from "next/cache";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
@@ -14,15 +15,6 @@ export * from "@/lib/tracking";
 
 export type TrackingError = { error: string; status: number };
 
-/** The migration may not have run yet — the panel must still open. */
-function isMissingTable(e: unknown): boolean {
-  let cur: unknown = e;
-  for (let i = 0; i < 5 && cur; i++) {
-    if (typeof cur === "object" && cur !== null && (cur as { code?: string }).code === "42P01") return true;
-    cur = (cur as { cause?: unknown }).cause;
-  }
-  return false;
-}
 
 function toPublic(row: typeof trackingTags.$inferSelect): TrackingTagPublic {
   return {
