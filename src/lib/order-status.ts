@@ -3,6 +3,7 @@
  * Client-safe: this file must never import `@/db` (pg cannot be bundled for the browser).
  */
 import type { OrderItem } from "@/db/schema";
+import type { FraudCheckReport } from "@/lib/fraud-check";
 
 /**
  * The four statuses the rest of the app reasons about. They are seeded into
@@ -193,6 +194,8 @@ export type AdminOrderRow = {
   status: string;
   date: string;
   fraud: FraudScore;
+  /** Third-party phone reputation, null until the checker has run. */
+  fraudReport: FraudCheckReport | null;
   /* ---- courier (STEP 8) ---- */
   /** Null until the parcel is booked — its presence blocks a second send. */
   courierConsignmentId: string | null;
@@ -230,6 +233,8 @@ export type AdminOrderDetail = {
   items: OrderItem[];
   placedAt: string;
   fraud: FraudScore;
+  /** Third-party phone reputation, null until the checker has run. */
+  fraudReport: FraudCheckReport | null;
   /* ---- courier (STEP 8) ---- */
   /** Null until the parcel is booked — its presence blocks a second send. */
   courierConsignmentId: string | null;

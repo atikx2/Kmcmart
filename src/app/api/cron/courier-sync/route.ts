@@ -3,6 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 import { fail } from "@/lib/admin-api";
 import { getSessionAdmin } from "@/lib/admin-auth";
 import { autoSyncEnabled, syncCourierStatuses } from "@/lib/admin-courier";
+import { fillMissingFraudReports } from "@/lib/admin-fraud";
 
 export const dynamic = "force-dynamic";
 
@@ -43,12 +44,33 @@ async function authorise(req: NextRequest): Promise<Caller> {
   return "open";
 }
 
+/**
+ * Backstop for the fraud check. A new order starts its own lookup in the
+ * background, but work scheduled after the response is not guaranteed on
+ * every runtime, so we sweep up anything that slipped through while this
+ * job is already awake.
+ *
+ * Deliberately independent of the courier: a shop with no courier connected
+ * still gets its numbers checked. It can never fail the request either —
+ * worst case it reports null.
+ */
+async function backfillFraud(): Promise<{ checked: number; failed: number } | null> {
+  try {
+    return await fillMissingFraudReports(8);
+  } catch (e) {
+    console.error("fraud backfill failed:", e);
+    return null;
+  }
+}
+
 async function run(req: NextRequest) {
   const caller = await authorise(req);
   if (!caller) return fail("Unauthorized", 401);
 
   if (caller !== "admin" && !(await autoSyncEnabled())) {
-    return Response.json({ ok: true, skipped: "Auto-sync is switched off", caller });
+    /* Auto-sync off only silences the courier half of this job. */
+    const fraud = await backfillFraud();
+    return Response.json({ ok: true, skipped: "Auto-sync is switched off", caller, fraud });
   }
 
   const url = new URL(req.url);
@@ -57,12 +79,21 @@ async function run(req: NextRequest) {
   const force = caller === "admin" && url.searchParams.get("force") === "1";
 
   try {
-    const result = await syncCourierStatuses({
-      limit: Number.isFinite(limitParam) && limitParam > 0 ? limitParam : undefined,
-      force,
-    });
-    if ("error" in result) return fail(result.error, result.status);
-    return Response.json({ ok: true, caller, ...result });
+    const [result, fraud] = await Promise.all([
+      syncCourierStatuses({
+        limit: Number.isFinite(limitParam) && limitParam > 0 ? limitParam : undefined,
+        force,
+      }),
+      backfillFraud(),
+    ]);
+
+    /* An unconfigured courier must not swallow the fraud result — the two
+       integrations are switched on independently. */
+    if ("error" in result) {
+      return Response.json({ ok: false, caller, courierError: result.error, fraud }, { status: 200 });
+    }
+
+    return Response.json({ ok: true, caller, ...result, fraud });
   } catch (e) {
     /* A cron caller must always get JSON back — an empty 500 tells the
        Netlify log nothing and tells the panel even less. */

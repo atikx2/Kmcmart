@@ -6,6 +6,7 @@ import {
   boolean,
   timestamp,
   jsonb,
+  real,
 } from "drizzle-orm/pg-core";
 
 export type OrderItem = {
@@ -159,6 +160,51 @@ export const courierConfig = pgTable("courier_config", {
   lastSyncCount: integer("last_sync_count"),
   lastSyncError: text("last_sync_error").notNull().default(""),
 });
+
+/**
+ * Third-party phone reputation (fraudchecker.link).
+ * Separate from courier_config because it is a different vendor with its own
+ * key — switching courier must not disturb fraud checking, or the reverse.
+ */
+export const fraudConfig = pgTable("fraud_config", {
+  id: serial("id").primaryKey(),
+  provider: text("provider").notNull().default("fraudchecker"),
+  baseUrl: text("base_url").notNull().default("https://fraudchecker.link/api/v1/qc/"),
+  /** Encrypted at rest, same scheme as the courier keys. */
+  apiKey: text("api_key").notNull().default(""),
+  isActive: boolean("is_active").notNull().default(false),
+  /** Check every new order automatically, the moment it is placed. */
+  autoCheck: boolean("auto_check").notNull().default(true),
+  /** A report younger than this is reused instead of spending another call. */
+  cacheHours: integer("cache_hours").notNull().default(24),
+  lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
+  lastError: text("last_error").notNull().default(""),
+});
+
+export type FraudCourierRow = { name: string; total: number; delivered: number; cancelled: number };
+
+/**
+ * One cached report per phone number. Keyed by phone rather than by order so a
+ * repeat customer costs one lookup, not one per order.
+ */
+export const fraudReports = pgTable("fraud_reports", {
+  id: serial("id").primaryKey(),
+  phone: text("phone").notNull().unique(),
+  totalParcels: integer("total_parcels").notNull().default(0),
+  totalDelivered: integer("total_delivered").notNull().default(0),
+  totalCancelled: integer("total_cancelled").notNull().default(0),
+  /** Percentage as the provider reports it, e.g. 88.89. */
+  deliveryRate: real("delivery_rate").notNull().default(0),
+  riskStatus: text("risk_status").notNull().default(""),
+  /** Per-courier breakdown, already sorted by parcel count. */
+  couriers: jsonb("couriers").$type<FraudCourierRow[]>().notNull().default([]),
+  checkedAt: timestamp("checked_at", { withTimezone: true }).notNull().defaultNow(),
+  /** Non-empty when the last attempt failed; the row is kept so we can show why. */
+  error: text("error").notNull().default(""),
+});
+
+export type FraudConfigRow = typeof fraudConfig.$inferSelect;
+export type FraudReportRow = typeof fraudReports.$inferSelect;
 
 export const admins = pgTable("admins", {
   id: serial("id").primaryKey(),

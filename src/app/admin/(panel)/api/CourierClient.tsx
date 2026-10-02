@@ -221,6 +221,9 @@ export default function CourierClient({
       const res = await fetch("/api/cron/courier-sync?force=1", { method: "POST" });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Sync failed");
+      /* The endpoint also runs the fraud backfill, so a courier problem now
+         comes back on a 200 rather than as a failed request. */
+      if (json.courierError) throw new Error(json.courierError);
       if (json.skipped) {
         showToast("err", json.skipped);
       } else {

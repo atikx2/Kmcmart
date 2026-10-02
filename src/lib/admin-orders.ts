@@ -1,5 +1,6 @@
 import { and, desc, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
+import { getFraudReports } from "@/lib/admin-fraud";
 import { orders } from "@/db/schema";
 import { loadOrderStatuses } from "@/lib/admin-order-statuses";
 import {
@@ -113,7 +114,8 @@ export async function listAdminOrders(opts: {
       .groupBy(orders.status),
   ]);
 
-  const fraudMap = await getFraudScores(rows.map((r) => r.phone));
+  const phones = rows.map((r) => r.phone);
+  const [fraudMap, reportMap] = await Promise.all([getFraudScores(phones), getFraudReports(phones)]);
 
   const counts: OrderCounts = { all: 0 };
   for (const s of known) counts[s.key] = 0;
@@ -140,6 +142,7 @@ export async function listAdminOrders(opts: {
     status: r.status,
     date: formatOrderDateTime(r.createdAt),
     fraud: fraudMap.get(r.phone) ?? fraudScore(0, 0, 0),
+    fraudReport: reportMap.get(r.phone) ?? null,
     courierConsignmentId: r.courierConsignmentId,
     courierTrackingCode: r.courierTrackingCode,
     courierTrackingLink: r.courierTrackingLink,
@@ -154,7 +157,7 @@ export async function getAdminOrderByCode(code: string): Promise<AdminOrderDetai
   const rows = await db.select().from(orders).where(eq(orders.code, code)).limit(1);
   const o = rows[0];
   if (!o) return null;
-  const fraudMap = await getFraudScores([o.phone]);
+  const [fraudMap, reportMap] = await Promise.all([getFraudScores([o.phone]), getFraudReports([o.phone])]);
   return {
     id: o.id,
     code: o.code,
@@ -170,6 +173,7 @@ export async function getAdminOrderByCode(code: string): Promise<AdminOrderDetai
     items: o.items ?? [],
     placedAt: formatOrderDateTime(o.createdAt),
     fraud: fraudMap.get(o.phone) ?? fraudScore(0, 0, 0),
+    fraudReport: reportMap.get(o.phone) ?? null,
     courierConsignmentId: o.courierConsignmentId,
     courierTrackingCode: o.courierTrackingCode,
     courierTrackingLink: o.courierTrackingLink,
@@ -202,6 +206,7 @@ export async function getAdminOrdersByIds(ids: number[]): Promise<AdminOrderDeta
     items: o.items ?? [],
     placedAt: formatOrderDateTime(o.createdAt),
     fraud: fraudScore(0, 0, 0),
+    fraudReport: null,
     courierConsignmentId: o.courierConsignmentId,
     courierTrackingCode: o.courierTrackingCode,
     courierTrackingLink: o.courierTrackingLink,

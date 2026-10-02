@@ -9,8 +9,10 @@ import {
   loadCourierConfig,
   toPublicConfig,
 } from "@/lib/admin-courier";
+import { fraudSummary, loadFraudConfig, toPublicFraudConfig } from "@/lib/admin-fraud";
 import { listOrderStatuses } from "@/lib/admin-order-statuses";
 import CourierClient from "./CourierClient";
+import FraudClient from "./FraudClient";
 
 export const metadata: Metadata = { title: "API · Admin" };
 export const dynamic = "force-dynamic";
@@ -66,11 +68,13 @@ const SOON: Integration[] = [
 export default async function AdminApiPage() {
   await requirePermission("api");
 
-  const [{ row, ready }, statuses, summary, pendingParcels] = await Promise.all([
+  const [{ row, ready }, statuses, summary, pendingParcels, fraud, fraudStats] = await Promise.all([
     loadCourierConfig(),
     listOrderStatuses(),
     courierSummary(),
     courierPendingCount(),
+    loadFraudConfig(),
+    fraudSummary(),
   ]);
 
   return (
@@ -83,8 +87,8 @@ export default async function AdminApiPage() {
           <div className="min-w-0">
             <h2 className="font-display font-extrabold text-base md:text-lg">Third-party integrations</h2>
             <p className="text-[12.5px] font-semibold text-gray-500 mt-1 leading-relaxed">
-              The courier is live. Send the docs for any other provider and its card gets wired up the same way,
-              without touching anything else in the panel.
+              The courier and the fraud check are live. Send the docs for any other provider and its card gets wired
+              up the same way, without touching anything else in the panel.
             </p>
           </div>
         </div>
@@ -107,6 +111,8 @@ export default async function AdminApiPage() {
         cronSecretSet={Boolean(process.env.CRON_SECRET || process.env.AUTH_SECRET)}
         pendingParcels={pendingParcels}
       />
+
+      <FraudClient initial={toPublicFraudConfig(fraud.row)} ready={fraud.ready} summary={fraudStats} />
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
         {SOON.map((it) => {

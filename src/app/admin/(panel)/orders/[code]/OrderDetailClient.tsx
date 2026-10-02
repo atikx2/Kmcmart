@@ -54,6 +54,15 @@ import {
   type CourierFraudReport,
   type CourierSendResult,
 } from "@/lib/courier";
+import {
+  FRAUD_TONE_CHIP,
+  FRAUD_TONE_TEXT,
+  formatRate,
+  fraudRiskLabel,
+  fraudTone,
+  type FraudCheckReport,
+} from "@/lib/fraud-check";
+import FraudModal from "@/components/admin/FraudModal";
 import type { OrderItem } from "@/db/schema";
 import ConfirmModal from "@/components/admin/ConfirmModal";
 import Toast, { useToast } from "@/components/admin/Toast";
@@ -200,6 +209,8 @@ export default function OrderDetailClient({
   const [sending, setSending] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [checkingFraud, setCheckingFraud] = useState(false);
+  const [fraudOpen, setFraudOpen] = useState(false);
+  const [phoneReport, setPhoneReport] = useState<FraudCheckReport | null>(order.fraudReport);
   const [report, setReport] = useState<CourierFraudReport | null>(null);
 
   const sendToCourier = async () => {
@@ -886,11 +897,55 @@ export default function OrderDetailClient({
             </p>
 
             <div className="mt-4 pt-4 border-t border-gray-100">
+              <p className="text-[10.5px] font-extrabold uppercase tracking-wider text-gray-400 mb-2">
+                All couriers
+              </p>
+              {phoneReport && phoneReport.totalParcels > 0 ? (
+                <button
+                  onClick={() => setFraudOpen(true)}
+                  className="w-full text-left rounded-2xl border border-gray-100 hover:border-[var(--g1)] transition p-3.5"
+                >
+                  <div className="flex items-end justify-between gap-2">
+                    <span
+                      className={`font-display text-[24px] font-extrabold leading-none ${
+                        FRAUD_TONE_TEXT[fraudTone(phoneReport)]
+                      }`}
+                    >
+                      {formatRate(phoneReport.deliveryRate)}%
+                    </span>
+                    <span
+                      className={`text-[9.5px] font-extrabold uppercase tracking-wider px-2 py-1 rounded-lg ring-1 ${
+                        FRAUD_TONE_CHIP[fraudTone(phoneReport)]
+                      }`}
+                    >
+                      {fraudRiskLabel(phoneReport)}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-[11.5px] font-bold text-gray-500">
+                    {phoneReport.totalDelivered} received · {phoneReport.totalCancelled} cancelled ·{" "}
+                    {phoneReport.totalParcels} parcels
+                  </p>
+                  <p className="mt-1.5 text-[11px] font-extrabold text-[var(--g2)]">
+                    See the per-courier breakdown
+                  </p>
+                </button>
+              ) : (
+                <button
+                  onClick={() => setFraudOpen(true)}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-2xl border-[1.5px] border-gray-200 px-4 py-2.5 text-[12.5px] font-extrabold text-gray-700 hover:border-[var(--g1)] hover:text-[var(--g2)] transition"
+                >
+                  <ShieldAlert size={14} />
+                  Check this number
+                </button>
+              )}
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <p className="text-[10.5px] font-extrabold uppercase tracking-wider text-gray-400 mb-2">
+                Steadfast only
+              </p>
               {report ? (
                 <>
-                  <p className="text-[10.5px] font-extrabold uppercase tracking-wider text-gray-400 mb-2.5">
-                    Courier-wide record
-                  </p>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="rounded-2xl bg-emerald-50 ring-1 ring-emerald-100 px-3 py-2.5">
                       <p className="font-display text-[20px] font-extrabold text-emerald-600 leading-none">
@@ -950,6 +1005,17 @@ export default function OrderDetailClient({
           </div>
         </div>
       </div>
+
+      {fraudOpen && (
+        <FraudModal
+          phone={order.phone}
+          customerName={order.customerName}
+          report={phoneReport}
+          ownHistory={order.fraud}
+          onClose={() => setFraudOpen(false)}
+          onUpdated={(r) => setPhoneReport(r)}
+        />
+      )}
 
       {confirmDelete && (
         <ConfirmModal

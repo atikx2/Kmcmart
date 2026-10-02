@@ -58,6 +58,16 @@ import {
   type OrderStatusOption,
 } from "@/lib/order-status";
 import { COURIER_TONE_CHIP, courierStatusLabel, courierStatusTone, type CourierSendResult } from "@/lib/courier";
+import {
+  FRAUD_TONE_BAR,
+  FRAUD_TONE_CHIP,
+  FRAUD_TONE_TEXT,
+  formatRate,
+  fraudRiskLabel,
+  fraudTone,
+  type FraudCheckReport,
+} from "@/lib/fraud-check";
+import FraudModal from "@/components/admin/FraudModal";
 import ConfirmModal from "@/components/admin/ConfirmModal";
 import InlineEdit from "@/components/admin/InlineEdit";
 import Toast, { useToast } from "@/components/admin/Toast";
@@ -154,32 +164,66 @@ const FRAUD_GLOW: Record<string, string> = {
   slate: "",
 };
 
-function FraudBar({ fraud }: { fraud: AdminOrderRow["fraud"] }) {
-  const pct = fraud.percent ?? 0;
-  const Icon = fraud.tone === "rose" ? ShieldAlert : fraud.tone === "slate" ? ShieldQuestionMark : ShieldCheck;
+/**
+ * The courier-wide report when we have one, this shop's own record otherwise.
+ * Clicking opens the per-courier breakdown.
+ */
+function FraudBar({
+  fraud,
+  report,
+  onOpen,
+}: {
+  fraud: AdminOrderRow["fraud"];
+  report: FraudCheckReport | null;
+  onOpen: () => void;
+}) {
+  const external = report && report.totalParcels > 0;
+  const tone = report ? fraudTone(report) : fraud.tone;
+
+  const pct = external ? report.deliveryRate : (fraud.percent ?? 0);
+  const headline = external
+    ? `${formatRate(report.deliveryRate)}%`
+    : fraud.percent === null
+      ? "—"
+      : `${fraud.percent}%`;
+  const label = report ? fraudRiskLabel(report) : fraud.label;
+  const delivered = external ? report.totalDelivered : fraud.delivered;
+  const cancelled = external ? report.totalCancelled : fraud.cancelled;
+  const total = external ? report.totalParcels : fraud.totalOrders;
+
+  const chip = external ? FRAUD_TONE_CHIP[tone] : (FRAUD_CHIP[tone] ?? FRAUD_CHIP.slate);
+  const text = external ? FRAUD_TONE_TEXT[tone] : FRAUD_TEXT[tone];
+  const bar = external ? FRAUD_TONE_BAR[tone] : FRAUD_BAR[tone];
+
+  const Icon = tone === "rose" ? ShieldAlert : tone === "slate" ? ShieldQuestionMark : ShieldCheck;
+
   return (
-    <div className="w-[124px]">
+    <button
+      onClick={onOpen}
+      title={
+        report
+          ? "Courier-wide record — tap for the breakdown"
+          : "Not checked by the fraud API yet — tap to check"
+      }
+      className="w-[124px] text-left rounded-xl -m-1 p-1 hover:bg-[#fff7f3] transition cursor-pointer"
+    >
       <div className="flex items-center justify-between gap-1.5">
         <span
-          className={`inline-flex items-center gap-1 text-[9.5px] font-extrabold uppercase tracking-[0.1em] px-2 py-[3px] rounded-full ring-1 ${
-            FRAUD_CHIP[fraud.tone] ?? FRAUD_CHIP.slate
-          }`}
+          className={`inline-flex items-center gap-1 text-[9.5px] font-extrabold uppercase tracking-[0.1em] px-2 py-[3px] rounded-full ring-1 ${chip}`}
         >
           <Icon size={10} strokeWidth={2.6} />
-          {fraud.label}
+          <span className="truncate max-w-[52px]">{label}</span>
         </span>
-        <span className={`font-display text-[13px] font-extrabold leading-none ${FRAUD_TEXT[fraud.tone]}`}>
-          {fraud.percent === null ? "—" : `${fraud.percent}%`}
-        </span>
+        <span className={`font-display text-[13px] font-extrabold leading-none ${text}`}>{headline}</span>
       </div>
 
       <div className="relative mt-2 h-[8px] rounded-full bg-gray-100 shadow-[inset_0_1px_2px_rgba(17,18,28,0.09)] overflow-hidden">
         <span className="absolute inset-0 opacity-[0.55] bg-[repeating-linear-gradient(135deg,transparent_0_5px,rgba(255,255,255,0.7)_5px_10px)]" />
         <div
-          className={`relative h-full rounded-full transition-[width] duration-500 ease-out ${FRAUD_BAR[fraud.tone]} ${
-            FRAUD_GLOW[fraud.tone] ?? ""
+          className={`relative h-full rounded-full transition-[width] duration-500 ease-out ${bar} ${
+            FRAUD_GLOW[tone] ?? ""
           }`}
-          style={{ width: `${Math.max(pct, fraud.percent === null ? 0 : 6)}%` }}
+          style={{ width: `${Math.min(100, Math.max(pct, pct === 0 ? 0 : 6))}%` }}
         >
           <span className="absolute inset-x-0 top-0 h-1/2 rounded-full bg-gradient-to-b from-white/45 to-transparent" />
         </div>
@@ -188,18 +232,19 @@ function FraudBar({ fraud }: { fraud: AdminOrderRow["fraud"] }) {
       <div className="mt-2 flex items-center gap-2.5 text-[9.5px] font-extrabold text-gray-400">
         <span className="inline-flex items-center gap-1 text-emerald-500">
           <CheckCircle2 size={10} strokeWidth={2.6} />
-          {fraud.delivered}
+          {delivered}
         </span>
         <span className="inline-flex items-center gap-1 text-rose-400">
           <XCircle size={10} strokeWidth={2.6} />
-          {fraud.cancelled}
+          {cancelled}
         </span>
         <span className="inline-flex items-center gap-1">
           <Boxes size={10} strokeWidth={2.6} />
-          {fraud.totalOrders}
+          {total}
         </span>
+        {external && <ChevronRight size={11} strokeWidth={3} className="ml-auto text-gray-300" />}
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -361,6 +406,7 @@ export default function OrdersClient({
   const [bulkDelete, setBulkDelete] = useState(false);
   const [working, setWorking] = useState(false);
   const [courierBusy, setCourierBusy] = useState<number | null>(null);
+  const [fraudFor, setFraudFor] = useState<AdminOrderRow | null>(null);
   const [bulkCourier, setBulkCourier] = useState(false);
 
   const firstRender = useRef(true);
@@ -1018,7 +1064,11 @@ export default function OrdersClient({
 
                           {/* fraud */}
                           <td className="px-3 py-4">
-                            <FraudBar fraud={o.fraud} />
+                            <FraudBar
+                              fraud={o.fraud}
+                              report={o.fraudReport}
+                              onOpen={() => setFraudFor(o)}
+                            />
                           </td>
 
                           {/* actions */}
@@ -1109,6 +1159,24 @@ export default function OrdersClient({
           confirmLabel={`Send ${selectedUnsent}`}
           onConfirm={sendSelected}
           onClose={() => (working ? undefined : setBulkCourier(false))}
+        />
+      )}
+
+      {fraudFor && (
+        <FraudModal
+          phone={fraudFor.phone}
+          customerName={fraudFor.customerName}
+          report={fraudFor.fraudReport}
+          ownHistory={fraudFor.fraud}
+          onClose={() => setFraudFor(null)}
+          onUpdated={(r) => {
+            /* One report serves every order from that number. */
+            setData((d) => ({
+              ...d,
+              items: d.items.map((o) => (o.phone === r.phone ? { ...o, fraudReport: r } : o)),
+            }));
+            setFraudFor((f) => (f ? { ...f, fraudReport: r } : f));
+          }}
         />
       )}
 

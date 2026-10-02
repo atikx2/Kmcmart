@@ -1,5 +1,5 @@
-import { NextRequest } from "next/server";
-import { eq, inArray } from "drizzle-orm";
+import { NextRequest, after } from "next/server";
+import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { deliveryAreas, orders, products } from "@/db/schema";
 import { effectivePrice, padOrderCode } from "@/lib/format";
@@ -46,20 +46,34 @@ export async function POST(req: NextRequest) {
       return Response.json({ error: "Cart is empty" }, { status: 400 });
     }
 
-    const area = await db
-      .select()
-      .from(deliveryAreas)
-      .where(eq(deliveryAreas.id, deliveryAreaId))
-      .limit(1);
+    const ids = items.map((i) => i.id);
+
+    /* These three do not depend on each other. Running them in sequence cost
+       the shopper three round-trips to the database for no reason. */
+    const [area, dbProducts, customer] = await Promise.all([
+      db.select({ name: deliveryAreas.name, charge: deliveryAreas.charge })
+        .from(deliveryAreas)
+        .where(eq(deliveryAreas.id, deliveryAreaId))
+        .limit(1),
+      /* Only the columns the order snapshot needs. `images` holds base64 data
+         URLs, so selecting the whole row dragged hundreds of kilobytes across
+         the wire per product; `->>0` fetches just the thumbnail. */
+      db.select({
+        id: products.id,
+        name: products.name,
+        image: sql<string | null>`${products.images}->>0`,
+        regularPrice: products.regularPrice,
+        sellPrice: products.sellPrice,
+        freeDelivery: products.freeDelivery,
+      })
+        .from(products)
+        .where(inArray(products.id, ids)),
+      getSessionCustomer(),
+    ]);
+
     if (!area[0]) {
       return Response.json({ error: "Invalid delivery area" }, { status: 400 });
     }
-
-    const ids = items.map((i) => i.id);
-    const dbProducts = await db
-      .select()
-      .from(products)
-      .where(inArray(products.id, ids));
 
     const orderItems = items.map((i) => {
       const p = dbProducts.find((d) => d.id === i.id);
@@ -67,7 +81,7 @@ export async function POST(req: NextRequest) {
       return {
         productId: p.id,
         name: p.name,
-        image: (p.images && p.images[0]) || "",
+        image: p.image ?? "",
         price: effectivePrice(p.regularPrice, p.sellPrice),
         qty: Math.min(Math.max(1, i.qty), 99),
       };
@@ -80,12 +94,13 @@ export async function POST(req: NextRequest) {
     const deliveryCharge = shipsFree ? 0 : area[0].charge;
     const total = subtotal + deliveryCharge;
 
-    const customer = await getSessionCustomer();
-
+    /* One statement instead of insert-then-update: the id is taken from the
+       sequence up front so `code` can be written in the same round-trip. */
     const [inserted] = await db
       .insert(orders)
       .values({
-        code: "TMP",
+        id: sql`nextval(pg_get_serial_sequence('orders', 'id'))`,
+        code: sql`lpad(currval(pg_get_serial_sequence('orders', 'id'))::text, 6, '0')`,
         customerId: customer?.id ?? null,
         customerName: customerName.trim(),
         phone: phone.trim(),
@@ -97,10 +112,21 @@ export async function POST(req: NextRequest) {
         items: orderItems,
         customerIp: clientIp(req),
       })
-      .returning({ id: orders.id });
+      .returning({ id: orders.id, code: orders.code });
 
-    const code = padOrderCode(inserted.id);
-    await db.update(orders).set({ code }).where(eq(orders.id, inserted.id));
+    const code = inserted.code || padOrderCode(inserted.id);
+
+    /* Reputation lookup must never make the shopper wait — `after` runs it
+       once the response has already gone out. The scheduled job backfills
+       anything this misses. */
+    after(async () => {
+      try {
+        const { autoCheckEnabled, checkPhone } = await import("@/lib/admin-fraud");
+        if (await autoCheckEnabled()) await checkPhone(phone.trim());
+      } catch (err) {
+        console.error("fraud auto-check failed:", err);
+      }
+    });
 
     return Response.json({ ok: true, code });
   } catch (e) {
