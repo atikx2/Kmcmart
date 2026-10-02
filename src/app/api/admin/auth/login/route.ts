@@ -21,6 +21,12 @@ export async function POST(req: NextRequest) {
     if (!admin || !verifyPassword(password, admin.passwordHash)) {
       return Response.json({ error: "Invalid email or password" }, { status: 401 });
     }
+    if (!admin.isActive) {
+      return Response.json(
+        { error: "This admin account has been blocked. Contact the Super Admin." },
+        { status: 403 }
+      );
+    }
 
     await setAdminSession(admin.id);
     return Response.json({ ok: true });

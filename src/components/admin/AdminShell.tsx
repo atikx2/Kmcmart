@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  ChartColumn,
   ChevronDown,
   Images,
   KeyRound,
@@ -22,9 +23,13 @@ import {
   ShieldCheck,
   ShoppingCart,
   Store,
+  Truck,
   Users,
+  Webhook,
   X,
 } from "lucide-react";
+import { NAV_COOKIE, NAV_COOKIE_MAX_AGE } from "@/lib/admin-ui";
+import { can, roleLabel, ROLE_CHIP, type PermissionKey } from "@/lib/permissions";
 
 type NavItem = {
   href?: string;
@@ -32,6 +37,8 @@ type NavItem = {
   icon: React.ComponentType<{ size?: number | string; className?: string }>;
   soon?: boolean;
   badge?: number;
+  /** undefined = always visible (Dashboard). Otherwise the admin needs this key. */
+  perm?: PermissionKey;
 };
 
 type NavEntry = { section: string } | NavItem;
@@ -40,20 +47,60 @@ function isItem(e: NavEntry): e is NavItem {
   return "label" in e;
 }
 
+/** Dashboard only matches exactly; every other item also matches its sub-routes. */
+function isActiveHref(pathname: string, href?: string): boolean {
+  if (!href) return false;
+  if (href === "/admin") return pathname === "/admin";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function pageTitle(pathname: string): string {
+  if (pathname === "/admin") return "Dashboard";
+  if (/^\/admin\/orders\/.+/.test(pathname)) return "Order Details";
+  if (pathname.startsWith("/admin/orders")) return "Order Management";
+  if (pathname === "/admin/products/new") return "Add Product";
+  if (/^\/admin\/products\/.+\/edit$/.test(pathname)) return "Edit Product";
+  if (pathname.startsWith("/admin/products")) return "Product Management";
+  if (pathname.startsWith("/admin/categories")) return "Category Management";
+  if (pathname.startsWith("/admin/banners")) return "Banner Management";
+  if (pathname.startsWith("/admin/menus")) return "Header Menu";
+  if (pathname.startsWith("/admin/delivery-areas")) return "Delivery Area";
+  if (pathname.startsWith("/admin/reports")) return "Report";
+  if (pathname.startsWith("/admin/api")) return "API Integrations";
+  if (/^\/admin\/customers\/.+/.test(pathname)) return "Customer Profile";
+  if (pathname.startsWith("/admin/customers")) return "Customers";
+  if (pathname.startsWith("/admin/roles")) return "Role Management";
+  if (pathname.startsWith("/admin/settings")) return "Site Settings";
+  return "Admin Panel";
+}
+
 const NAV: NavEntry[] = [
   { section: "Main" },
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { section: "Manage" },
-  { label: "Orders", icon: ShoppingCart, soon: true },
-  { label: "Products", icon: Package, soon: true },
-  { label: "Categories", icon: Shapes, soon: true },
-  { label: "Banners", icon: Images, soon: true },
-  { label: "Menus", icon: List, soon: true },
+  { href: "/admin/orders", label: "Orders", icon: ShoppingCart, perm: "orders" },
+  { href: "/admin/products", label: "Products", icon: Package, perm: "products" },
+  { href: "/admin/categories", label: "Categories", icon: Shapes, perm: "categories" },
+  { href: "/admin/banners", label: "Banners", icon: Images, perm: "banners" },
+  { href: "/admin/menus", label: "Menus", icon: List, perm: "menus" },
+  { href: "/admin/delivery-areas", label: "Delivery Area", icon: Truck, perm: "delivery" },
+  { href: "/admin/customers", label: "Customers", icon: Users, perm: "customers" },
   { section: "System" },
-  { label: "Customers", icon: Users, soon: true },
-  { label: "Roles", icon: ShieldCheck, soon: true },
-  { label: "Site Settings", icon: Settings, soon: true },
+  { href: "/admin/reports", label: "Report", icon: ChartColumn, perm: "reports" },
+  { href: "/admin/api", label: "API", icon: Webhook, perm: "api" },
+  { href: "/admin/roles", label: "Roles", icon: ShieldCheck, perm: "roles" },
+  { href: "/admin/settings", label: "Site Settings", icon: Settings, perm: "settings" },
 ];
+
+/** Hides every page the admin has no key for, plus any section header left empty. */
+function visibleNav(admin: { role: string; permissions: string[] }): NavEntry[] {
+  const allowed = NAV.filter((e) => !isItem(e) || !e.perm || can(admin, e.perm));
+  return allowed.filter((e, i) => {
+    if (isItem(e)) return true;
+    const next = allowed[i + 1];
+    return next !== undefined && isItem(next);
+  });
+}
 
 /* ---------------- profile modals ---------------- */
 
@@ -209,37 +256,48 @@ function ProfileModal({
 
 export default function AdminShell({
   email,
+  adminName,
+  role,
+  permissions,
   pendingOrders,
   logo,
   siteName,
+  defaultCollapsed = false,
+  menuMode = "remember",
   children,
 }: {
   email: string;
+  adminName: string;
+  role: string;
+  permissions: string[];
   pendingOrders: number;
   logo: string;
   siteName: string;
+  /** Read from the `kmc_admin_nav` cookie on the server so the sidebar renders
+      in its remembered state on the very first paint (no expand→collapse flash). */
+  defaultCollapsed?: boolean;
+  /** "expanded" | "collapsed" | "remember" — from Site Settings. */
+  menuMode?: string;
   children: ReactNode;
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const [mobileNav, setMobileNav] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [modal, setModal] = useState<"email" | "password" | null>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
-  /* persist collapse state */
-  useEffect(() => {
-    try {
-      if (localStorage.getItem("kmc_admin_nav") === "1") setCollapsed(true);
-    } catch { /* ignore */ }
-  }, []);
+  /* Persist the collapse state in a cookie so the server can render the same
+     state next time. Collapsed still shows every icon — only the labels hide. */
   const toggleCollapse = () => {
     setCollapsed((c) => {
+      const next = !c;
       try {
-        localStorage.setItem("kmc_admin_nav", c ? "0" : "1");
+        document.cookie = `${NAV_COOKIE}=${next ? "1" : "0"}; path=/; max-age=${NAV_COOKIE_MAX_AGE}; samesite=lax`;
+        localStorage.setItem(NAV_COOKIE, next ? "1" : "0");
       } catch { /* ignore */ }
-      return !c;
+      return next;
     });
   };
 
@@ -262,12 +320,12 @@ export default function AdminShell({
     window.location.href = "/admin/login";
   };
 
-  const title =
-    pathname === "/admin" ? "Dashboard" : "Admin Panel";
+  const title = pageTitle(pathname);
+  const nav = visibleNav({ role, permissions });
 
   const navContent = (isCollapsed: boolean) => (
     <nav className="flex-1 overflow-y-auto no-scrollbar py-3">
-      {NAV.map((entry, idx) => {
+      {nav.map((entry, idx) => {
         if (!isItem(entry)) {
           return isCollapsed ? (
             <div key={idx} className="mx-4 my-3 border-t border-gray-100" />
@@ -278,7 +336,7 @@ export default function AdminShell({
           );
         }
         const Icon = entry.icon;
-        const active = entry.href ? pathname === entry.href : false;
+        const active = isActiveHref(pathname, entry.href);
         const badge = entry.label === "Orders" ? pendingOrders : entry.badge;
 
         const inner = (
@@ -303,7 +361,7 @@ export default function AdminShell({
           active ? "grad-bg text-white shadow-[0_8px_22px_rgba(255,61,119,0.35)]" : "text-gray-600 hover:bg-gray-50"
         } ${isCollapsed ? "justify-center px-0" : ""}`;
 
-        return entry.soon ? (
+        return entry.soon && !entry.href ? (
           <span key={entry.label} title={entry.label} className={`${cls} cursor-not-allowed opacity-70`}>
             {inner}
           </span>
@@ -334,51 +392,98 @@ export default function AdminShell({
 
         {navContent(collapsed)}
 
-        <div className="border-t border-gray-100 p-3">
-          <button
-            onClick={toggleCollapse}
-            className={`w-full flex items-center gap-3 rounded-2xl px-3.5 py-3 text-[13px] font-extrabold text-gray-500 hover:bg-gray-50 transition ${
-              collapsed ? "justify-center px-0" : ""
-            }`}
-            aria-label={collapsed ? "Expand menu" : "Collapse menu"}
-          >
-            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-            {!collapsed && <span>Collapse Menu</span>}
-          </button>
-        </div>
+        {menuMode === "remember" ? (
+          <div className="border-t border-gray-100 p-3">
+            <button
+              onClick={toggleCollapse}
+              className={`w-full flex items-center gap-3 rounded-2xl px-3.5 py-3 text-[13px] font-extrabold text-gray-500 hover:bg-gray-50 transition ${
+                collapsed ? "justify-center px-0" : ""
+              }`}
+              aria-label={collapsed ? "Expand menu" : "Collapse menu"}
+            >
+              {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+              {!collapsed && <span>Collapse Menu</span>}
+            </button>
+          </div>
+        ) : (
+          /* The behaviour is pinned in Site Settings — show where to change it. */
+          <div className="border-t border-gray-100 p-3">
+            <Link
+              href="/admin/settings"
+              title="Sidebar behaviour is set in Site Settings"
+              className={`w-full flex items-center gap-3 rounded-2xl px-3.5 py-3 text-[12px] font-extrabold text-gray-400 hover:bg-gray-50 transition ${
+                collapsed ? "justify-center px-0" : ""
+              }`}
+            >
+              {collapsed ? <PanelLeftOpen size={18} /> : <Settings size={17} />}
+              {!collapsed && <span>Menu: {menuMode === "collapsed" ? "always collapsed" : "always expanded"}</span>}
+            </Link>
+          </div>
+        )}
       </aside>
 
-      {/* mobile drawer */}
-      <div className={`fixed inset-0 z-[110] lg:hidden ${mobileNav ? "" : "pointer-events-none"}`}>
+      {/* mobile: an always-visible icon rail that slides open into a full panel.
+          Collapsed only hides the labels — the icons never disappear. */}
+      <div className="lg:hidden">
         <div
-          className={`absolute inset-0 bg-black/50 backdrop-blur-[2px] transition-opacity duration-300 ${
-            mobileNav ? "opacity-100" : "opacity-0"
+          className={`fixed inset-0 z-[105] bg-black/50 backdrop-blur-[2px] transition-opacity duration-300 ${
+            mobileNav ? "opacity-100" : "opacity-0 pointer-events-none"
           }`}
           onClick={() => setMobileNav(false)}
         />
         <aside
-          className={`absolute left-0 top-0 h-full w-[268px] bg-white shadow-2xl flex flex-col transition-transform duration-300 ${
-            mobileNav ? "translate-x-0" : "-translate-x-full"
+          className={`fixed left-0 top-0 h-screen z-[110] bg-white border-r border-gray-100 flex flex-col transition-[width] duration-300 ease-out ${
+            mobileNav ? "w-[264px] shadow-[0_0_60px_rgba(17,18,28,0.25)]" : "w-[64px]"
           }`}
         >
-          <div className="flex items-center justify-between h-[72px] px-5 border-b border-gray-100">
-            <Image src={logo} alt={siteName} width={150} height={36} className="h-8 w-auto" />
-            <button onClick={() => setMobileNav(false)} className="w-9 h-9 rounded-full bg-gray-100 grid place-items-center" aria-label="Close menu">
-              <X size={16} />
+          <div className={`flex items-center h-[72px] border-b border-gray-100 shrink-0 ${mobileNav ? "px-4 justify-between" : "justify-center"}`}>
+            {mobileNav ? (
+              <>
+                <Image src={logo} alt={siteName} width={150} height={36} className="h-8 w-auto" />
+                <button
+                  onClick={() => setMobileNav(false)}
+                  className="w-9 h-9 rounded-full bg-gray-100 grid place-items-center shrink-0"
+                  aria-label="Close menu"
+                >
+                  <X size={16} />
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/admin"
+                className="w-10 h-10 rounded-2xl grad-bg grid place-items-center text-white font-display font-extrabold text-lg"
+                aria-label="Dashboard"
+              >
+                K
+              </Link>
+            )}
+          </div>
+
+          {navContent(!mobileNav)}
+
+          <div className="border-t border-gray-100 p-2.5 shrink-0">
+            <button
+              onClick={() => setMobileNav((v) => !v)}
+              className={`w-full flex items-center gap-3 rounded-2xl py-3 text-[13px] font-extrabold text-gray-500 hover:bg-gray-50 transition ${
+                mobileNav ? "px-3.5" : "justify-center px-0"
+              }`}
+              aria-label={mobileNav ? "Collapse menu" : "Expand menu"}
+            >
+              {mobileNav ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+              {mobileNav && <span>Collapse Menu</span>}
             </button>
           </div>
-          {navContent(false)}
         </aside>
       </div>
 
-      {/* main column */}
-      <div className="flex-1 min-w-0 flex flex-col">
+      {/* main column — pl clears the fixed mobile icon rail */}
+      <div className="flex-1 min-w-0 flex flex-col pl-[64px] lg:pl-0">
         {/* header */}
         <header className="sticky top-0 z-40 h-[72px] bg-white/90 backdrop-blur-md border-b border-gray-100 flex items-center gap-3 px-4 md:px-6">
           <button
-            onClick={() => setMobileNav(true)}
-            className="lg:hidden w-10 h-10 grid place-items-center rounded-2xl hover:bg-gray-100"
-            aria-label="Open menu"
+            onClick={() => setMobileNav((v) => !v)}
+            className="lg:hidden w-10 h-10 grid place-items-center rounded-2xl hover:bg-gray-100 shrink-0"
+            aria-label={mobileNav ? "Close menu" : "Open menu"}
           >
             <MenuIcon size={20} />
           </button>
@@ -412,7 +517,16 @@ export default function AdminShell({
                 <div className="absolute right-0 top-[calc(100%+10px)] w-[264px] bg-white rounded-2xl border border-gray-100 shadow-[0_20px_60px_rgba(17,18,28,0.16)] overflow-hidden animate-slide-down">
                   <div className="px-4 py-3.5 border-b border-gray-100">
                     <p className="text-[11px] font-extrabold uppercase tracking-wider text-gray-400">Signed in as</p>
-                    <p className="text-[13px] font-extrabold text-gray-800 truncate mt-0.5">{email}</p>
+                    <p className="text-[13px] font-extrabold text-gray-800 truncate mt-0.5">{adminName || email}</p>
+                    <p className="text-[11px] font-semibold text-gray-400 truncate">{email}</p>
+                    <span
+                      className={`mt-2 inline-flex items-center gap-1 text-[9.5px] font-extrabold uppercase tracking-wider px-2 py-[4px] rounded-full ring-1 ${
+                        ROLE_CHIP[role] ?? ROLE_CHIP.custom
+                      }`}
+                    >
+                      <ShieldCheck size={10} strokeWidth={2.6} />
+                      {roleLabel(role)}
+                    </span>
                   </div>
                   <button
                     onClick={() => {

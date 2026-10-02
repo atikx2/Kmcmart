@@ -1,9 +1,10 @@
 import crypto from "crypto";
 import { cookies } from "next/headers";
-import { eq } from "drizzle-orm";
+import { eq, sql as dsql } from "drizzle-orm";
 import { db } from "@/db";
 import { admins, type Admin } from "@/db/schema";
 import { hashPassword, verifyPassword } from "@/lib/auth";
+import { ALL_PERMISSIONS } from "@/lib/permissions";
 
 export { hashPassword, verifyPassword };
 
@@ -57,6 +58,20 @@ export async function getSessionAdmin(): Promise<Admin | null> {
   const jar = await cookies();
   const id = parseAdminToken(jar.get(COOKIE_NAME)?.value);
   if (!id) return null;
-  const rows = await db.select().from(admins).where(eq(admins.id, id)).limit(1);
-  return rows[0] ?? null;
+
+  const [rows, ownerRows] = await Promise.all([
+    db.select().from(admins).where(eq(admins.id, id)).limit(1),
+    db.select({ id: dsql<number>`min(${admins.id})::int` }).from(admins),
+  ]);
+
+  const admin = rows[0];
+  if (!admin) return null;
+
+  /* The very first account is always the Super Admin: full access, never
+     blocked. Derived from the lowest id, so it holds even if the role column
+     was never backfilled. */
+  if (admin.id === ownerRows[0]?.id) {
+    return { ...admin, role: "owner", permissions: [...ALL_PERMISSIONS], isActive: true };
+  }
+  return admin;
 }

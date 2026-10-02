@@ -16,11 +16,14 @@ import {
 } from "lucide-react";
 import type { Menu, ProductLite, Settings } from "@/db/schema";
 import { effectivePrice, taka } from "@/lib/format";
-import { useCart } from "./Providers";
+import type { SiteText } from "@/lib/i18n";
+import { useCart, useText } from "./Providers";
+import Brand from "./Brand";
 
 /* --------------------------- live search --------------------------- */
 
 function LiveSearch({ autoFocus = false, onNavigate }: { autoFocus?: boolean; onNavigate?: () => void }) {
+  const text = useText();
   const router = useRouter();
   const [q, setQ] = useState("");
   const [results, setResults] = useState<ProductLite[]>([]);
@@ -80,17 +83,17 @@ function LiveSearch({ autoFocus = false, onNavigate }: { autoFocus?: boolean; on
             setOpen(true);
           }}
           onFocus={() => setOpen(true)}
-          placeholder="Search products…"
+          placeholder={text.searchPlaceholder}
           className="flex-1 bg-transparent px-4 md:px-5 py-2.5 text-sm outline-none placeholder:text-gray-400 min-w-0"
         />
         {loading && <Loader2 size={16} className="animate-spin text-gray-400 shrink-0" />}
         <button
           type="submit"
           className="grad-bg text-white h-9 md:h-10 px-4 md:px-6 mr-[3px] rounded-full flex items-center gap-1.5 text-sm font-bold shrink-0 hover:opacity-90 transition"
-          aria-label="Search"
+          aria-label={text.navSearch}
         >
           <Search size={15} />
-          <span className="hidden md:inline">Search</span>
+          <span className="hidden md:inline">{text.navSearch}</span>
         </button>
       </form>
 
@@ -126,13 +129,13 @@ function LiveSearch({ autoFocus = false, onNavigate }: { autoFocus?: boolean; on
                 onClick={() => go(`/search?q=${encodeURIComponent(q.trim())}`)}
                 className="w-full text-center text-xs font-extrabold grad-text py-3 border-t border-gray-100 hover:bg-gray-50 transition uppercase tracking-wider"
               >
-                See all results for “{q.trim()}”
+                {text.viewAll} — “{q.trim()}”
               </button>
             </>
           ) : (
             !loading && (
               <p className="text-sm text-gray-400 text-center py-6">
-                No products found for “{q.trim()}”
+                {text.noProducts} — “{q.trim()}”
               </p>
             )
           )}
@@ -149,11 +152,13 @@ function MobileMenu({
   onClose,
   settings,
   menus,
+  text,
 }: {
   open: boolean;
   onClose: () => void;
   settings: Settings;
   menus: Menu[];
+  text: SiteText;
 }) {
   const pathname = usePathname();
   const { count, setOpen: openCart } = useCart();
@@ -164,7 +169,11 @@ function MobileMenu({
   }, [pathname]);
 
   return (
-    <div className={`fixed inset-0 z-[95] lg:hidden ${open ? "pointer-events-auto" : "pointer-events-none"}`}>
+    <div
+      className={`fixed inset-0 z-[95] overflow-hidden lg:hidden ${
+        open ? "pointer-events-auto" : "pointer-events-none"
+      }`}
+    >
       <div
         className={`absolute inset-0 bg-black/50 backdrop-blur-[2px] transition-opacity duration-300 ${
           open ? "opacity-100" : "opacity-0"
@@ -177,7 +186,7 @@ function MobileMenu({
         }`}
       >
         <div className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100">
-          <Image src={settings.logoHeader} alt={settings.siteName} width={130} height={32} className="h-8 w-auto" />
+          <Brand settings={settings} width={130} height={32} className="h-8 w-auto" textClassName="text-[19px]" />
           <button onClick={onClose} className="w-9 h-9 rounded-full bg-gray-100 grid place-items-center" aria-label="Close menu">
             <X size={17} />
           </button>
@@ -201,8 +210,10 @@ function MobileMenu({
               )}
             </span>
             <span className="text-xs font-extrabold text-gray-800 text-left leading-tight">
-              My Cart
-              <span className="block text-[10px] font-bold text-gray-400">{count} items</span>
+              {text.navCart}
+              <span className="block text-[10px] font-bold text-gray-400">
+                {count} {text.itemsWord}
+              </span>
             </span>
           </button>
           <Link href="/account" className="grad-soft rounded-2xl px-3 py-3 flex items-center gap-2.5">
@@ -210,14 +221,16 @@ function MobileMenu({
               <User size={16} />
             </span>
             <span className="text-xs font-extrabold text-gray-800 text-left leading-tight">
-              My Account
-              <span className="block text-[10px] font-bold text-gray-400">Login / Orders</span>
+              {text.myAccount}
+              <span className="block text-[10px] font-bold text-gray-400">
+                {text.login} / {text.myOrders}
+              </span>
             </span>
           </Link>
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 pb-4">
-          <p className="px-2 pb-2 text-[10px] font-extrabold uppercase tracking-[0.16em] text-gray-400">Menu</p>
+          <p className="px-2 pb-2 text-[10px] font-extrabold uppercase tracking-[0.16em] text-gray-400">{text.navMenu}</p>
           <ul className="space-y-1">
             {menus.map((m) => {
               const active = pathname === m.href;
@@ -243,7 +256,7 @@ function MobileMenu({
             <span className="grad-bg text-white rounded-xl p-2">
               <Phone size={14} />
             </span>
-            Hotline: {settings.phone}
+            {text.hotline}: {settings.phone}
           </a>
         </div>
       </aside>
@@ -253,7 +266,15 @@ function MobileMenu({
 
 /* --------------------------- header --------------------------- */
 
-export default function Header({ settings, menus }: { settings: Settings; menus: Menu[] }) {
+export default function Header({
+  settings,
+  menus,
+  text,
+}: {
+  settings: Settings;
+  menus: Menu[];
+  text: SiteText;
+}) {
   const pathname = usePathname();
   const { count, setOpen } = useCart();
   const [scrolled, setScrolled] = useState(false);
@@ -272,6 +293,7 @@ export default function Header({ settings, menus }: { settings: Settings; menus:
   }, [pathname]);
 
   return (
+    <>
     <header
       className={`sticky top-0 z-[60] bg-white/95 backdrop-blur-md transition-shadow ${
         scrolled ? "shadow-[0_6px_24px_rgba(17,18,28,0.08)]" : ""
@@ -289,14 +311,7 @@ export default function Header({ settings, menus }: { settings: Settings; menus:
             <MenuIcon size={21} />
           </button>
           <Link href="/" className="shrink-0">
-            <Image
-              src={settings.logoHeader}
-              alt={settings.siteName}
-              width={150}
-              height={36}
-              className="h-9 w-auto"
-              priority
-            />
+            <Brand settings={settings} width={150} height={36} className="h-9 w-auto" textClassName="text-[21px]" priority />
           </Link>
           <button
             onClick={() => setSearchOpen((v) => !v)}
@@ -319,14 +334,7 @@ export default function Header({ settings, menus }: { settings: Settings; menus:
         {/* desktop row */}
         <div className="hidden lg:flex items-center gap-8 h-[78px]">
           <Link href="/" className="shrink-0">
-            <Image
-              src={settings.logoHeader}
-              alt={settings.siteName}
-              width={196}
-              height={48}
-              className="h-12 w-auto"
-              priority
-            />
+            <Brand settings={settings} width={196} height={48} className="h-12 w-auto" textClassName="text-[27px]" priority />
           </Link>
           <div className="flex-1 flex justify-center">
             <div className="w-full max-w-[560px]">
@@ -347,14 +355,14 @@ export default function Header({ settings, menus }: { settings: Settings; menus:
                   </span>
                 )}
               </span>
-              <span className="text-[13px] font-extrabold text-gray-700">Cart</span>
+              <span className="text-[13px] font-extrabold text-gray-700">{text.navCart}</span>
             </button>
             <Link
               href="/account"
               className="flex items-center gap-2.5 rounded-full grad-bg text-white px-4 py-2.5 hover:opacity-90 transition"
             >
               <User size={17} />
-              <span className="text-[13px] font-extrabold">Account</span>
+              <span className="text-[13px] font-extrabold">{text.navAccount}</span>
             </Link>
           </div>
         </div>
@@ -385,7 +393,13 @@ export default function Header({ settings, menus }: { settings: Settings; menus:
         </div>
       </nav>
 
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} settings={settings} menus={menus} />
     </header>
+
+    {/* NOTE: the drawer MUST live outside <header>. The header uses
+        `backdrop-blur-md` (backdrop-filter), which makes it the containing
+        block for position:fixed descendants — inside it, `fixed inset-0`
+        collapses to the 56px header strip and the menu is invisible. */}
+    <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} settings={settings} menus={menus} text={text} />
+    </>
   );
 }

@@ -26,7 +26,11 @@ DESIGN TOKENS (use them, don't invent):
 - Fonts: --font-sans (Manrope), --font-display (Space_Grotesk). Currency: taka() → ৳.
 
 HARD RULES:
-- Order status values: pending | confirmed (UI label "On The Way") | delivered | cancelled. Dashboard depends on these exact keys — do NOT rename.
+- Order status values live in the `order_statuses` table and are managed from Delivery Area → Order Status tab.
+  The four built-in keys — pending | confirmed (UI label "On The Way") | delivered | cancelled — are `is_system`
+  rows: renameable + recolourable, never deletable. Dashboard/reports depend on these exact KEYS — do NOT rename
+  the keys (labels are free). Admin-made statuses are extra "in progress" states: they never count as revenue
+  (only `delivered` does) and never count as lost (only `cancelled` does).
 - Order code: zero-padded 6-digit from serial id (000001). Orders snapshot items jsonb + deliveryAreaName + deliveryCharge — old orders must stay correct even if an area is deleted.
 - products.sellPrice nullable ⇒ effectivePrice(). products.images = string[] jsonb, images[0] primary. Slugs unique, kebab-case.
 - EVERY new route under src/app/api/admin/* must call await getSessionAdmin() and return 401 if null.
@@ -49,7 +53,8 @@ Reply in Bengali+English mix (Banglish) like the user speaks.
 Build Order Management at /admin/orders (page src/app/admin/(panel)/orders/page.tsx) and activate the sidebar item (href /admin/orders, remove soon:true).
 
 UI (desktop table, mobile stacked cards — responsive):
-- Status filter tabs on top: All, Pending, On The Way (confirmed), Delivered, Cancelled — each with count chip.
+- Status filter tabs on top: All + one tab per row of `order_statuses` (built-ins: Pending, On The Way, Delivered,
+  Cancelled) — each with count chip and the status colour on its icon.
 - Search box (SVG Search icon) — search by order code / customer name / phone. Debounced.
 - Table columns: Order # (grad-text, e.g. #000121) · Customer (name+phone) · Items (pcs) · Total (taka) · Delivery Area · Status badge (amber=pending, sky=on the way, emerald=delivered, rose=cancelled) · Date · Actions: View (Eye icon), Delete (Trash2, with confirm modal).
 - Pagination (12 per page) or Load More — your choice, keep it snappy.
@@ -148,6 +153,14 @@ One page, section cards, single "Save Changes" sticky button (grad-bg), success 
 2) Contact & Social (footer): phone, email, address, facebook, instagram, youtube, whatsapp.
 3) Appearance: colorFrom + colorTo with <input type="color"> + big gradient preview bar + live preview of a button + "Applies site-wide instantly (titles, buttons, ribbons)".
 4) Storefront Text: categoryTitle, categorySubtitle, allProductsTitle, buyNowText ("Buy Now" button label everywhere).
+5) Admin Panel section → "Sidebar menu behaviour" radio/select with 3 choices:
+   - Always expanded (labels + icons)
+   - Always collapsed (icon rail only)
+   - Remember my last choice  ← current behaviour, keep as the default
+   Add settings.adminMenuMode text column ("expanded" | "collapsed" | "remember"),
+   read it in src/app/admin/(panel)/layout.tsx next to the kmc_admin_nav cookie
+   (cookie only wins when the mode is "remember") and pass defaultCollapsed to
+   AdminShell. Applies to both the desktop sidebar and the mobile icon rail.
 
 API: PUT /api/admin/settings (guard admin) → update settings row id=1 → revalidatePath("/", "layout"). Settings are already wired end-to-end (root layout injects --g1/--g2 vars, header/footer/sections read all fields) — you only build the form.
 ```

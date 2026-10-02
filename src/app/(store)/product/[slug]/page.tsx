@@ -6,7 +6,7 @@ import {
   getDeliveryAreas,
   getProductBySlug,
   getRelatedProducts,
-  getSettings,
+  getSiteText,
 } from "@/lib/data";
 import ProductClient from "./ProductClient";
 import ProductCard from "@/components/home/ProductCard";
@@ -29,8 +29,8 @@ export default async function ProductPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const [settings, product, areas] = await Promise.all([
-    getSettings(),
+  const [text, product, areas] = await Promise.all([
+    getSiteText(),
     getProductBySlug(slug),
     getDeliveryAreas(),
   ]);
@@ -43,7 +43,7 @@ export default async function ProductPage({
     <div className="max-w-7xl mx-auto px-4 lg:px-6 py-5 md:py-9">
       {/* breadcrumb */}
       <nav className="flex items-center gap-1.5 text-[12px] md:text-[13px] font-semibold text-gray-400 mb-5 md:mb-7 overflow-x-auto no-scrollbar whitespace-nowrap">
-        <Link href="/" className="hover:text-gray-700 transition">Home</Link>
+        <Link href="/" className="hover:text-gray-700 transition">{text.navHome}</Link>
         <ChevronRight size={13} />
         {product.category && (
           <>
@@ -65,10 +65,10 @@ export default async function ProductPage({
           images,
           regularPrice: product.regularPrice,
           sellPrice: product.sellPrice,
+          freeDelivery: product.freeDelivery,
           stock: product.stock,
           categoryName: product.category?.name ?? "Product",
         }}
-        buyNowText={settings.buyNowText}
         deliveryCharge={areas[0]?.charge ?? 100}
       />
 
@@ -78,17 +78,12 @@ export default async function ProductPage({
           <span className="grad-bg text-white rounded-xl p-2">
             <FileText size={16} />
           </span>
-          Product Description
+          {text.descriptionTitle}
         </h2>
         <span className="block mt-3 h-[3px] w-12 rounded-full grad-bg" />
         <p className="mt-4 text-sm md:text-[15px] text-gray-600 leading-relaxed">{product.description}</p>
-        <ul className="mt-5 grid sm:grid-cols-2 gap-2.5 text-[13px] text-gray-600">
-          {[
-            "100% authentic & brand new",
-            "Cash on delivery available",
-            "Fast delivery inside Dhaka (24–48h)",
-            "Easy 7-day replacement guarantee",
-          ].map((f) => (
+        <ul className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-[13px] text-gray-600">
+          {[text.genuineTitle, text.cashOnDeliveryNote, text.fastDeliveryTitle, text.returnSub].map((f) => (
             <li key={f} className="flex items-center gap-2.5 bg-gray-50 rounded-xl px-3.5 py-2.5 font-semibold">
               <span className="w-1.5 h-1.5 rounded-full grad-bg shrink-0" />
               {f}
@@ -100,10 +95,10 @@ export default async function ProductPage({
       {/* related */}
       {related.length > 0 && (
         <section className="mt-12 md:mt-16">
-          <SectionTitle eyebrow="You may also like" title="Related Products" />
+          <SectionTitle eyebrow={text.relatedEyebrow} title={text.relatedTitle} />
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 md:gap-4">
             {related.map((p) => (
-              <ProductCard key={p.id} product={p} buyNowText={settings.buyNowText} />
+              <ProductCard key={p.id} product={p} />
             ))}
           </div>
         </section>

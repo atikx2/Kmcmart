@@ -4,30 +4,31 @@ import {
   CircleCheck,
   CircleX,
   Clock,
+  ShieldAlert,
   ShoppingBag,
   TrendingUp,
   Truck,
 } from "lucide-react";
 import { getDashboardData } from "@/lib/admin-data";
+import { listOrderStatuses } from "@/lib/admin-order-statuses";
+import { statusLabel, statusTint } from "@/lib/order-status";
 import { taka } from "@/lib/format";
 import OrdersChart from "@/components/admin/OrdersChart";
+import { permissionLabel } from "@/lib/permissions";
 
-const statusChip: Record<string, string> = {
-  pending: "bg-amber-50 text-amber-600 border border-amber-100",
-  confirmed: "bg-sky-50 text-sky-600 border border-sky-100",
-  delivered: "bg-emerald-50 text-emerald-600 border border-emerald-100",
-  cancelled: "bg-rose-50 text-rose-500 border border-rose-100",
-};
+export default async function AdminDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ denied?: string }>;
+}) {
+  const [{ stats, chart, recent }, sp, statuses] = await Promise.all([
+    getDashboardData(),
+    searchParams,
+    listOrderStatuses(),
+  ]);
 
-const statusLabel: Record<string, string> = {
-  pending: "Pending",
-  confirmed: "On The Way",
-  delivered: "Delivered",
-  cancelled: "Cancelled",
-};
-
-export default async function AdminDashboardPage() {
-  const { stats, chart, recent } = await getDashboardData();
+  const statusColorFor = (key: string) => statuses.find((s) => s.key === key)?.color ?? "#6B7280";
+  const denied = sp.denied ? permissionLabel(sp.denied) : null;
 
   const cards = [
     {
@@ -90,6 +91,15 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="space-y-5">
+      {denied && (
+        <p className="flex items-start gap-2 text-[12px] font-bold text-rose-600 bg-rose-50 border border-rose-100 rounded-2xl px-4 py-3">
+          <ShieldAlert size={15} className="shrink-0 mt-[1px]" />
+          <span>
+            You do not have access to <b>{denied}</b>. Ask the Super Admin to turn that page on for your account.
+          </span>
+        </p>
+      )}
+
       {/* stat cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
         {cards.map(({ label, value, sub, icon: Icon, gradient }) => (
@@ -156,11 +166,10 @@ export default async function AdminDashboardPage() {
                   <td className="px-4 py-3.5 font-extrabold text-gray-900 whitespace-nowrap">{taka(o.total)}</td>
                   <td className="px-4 py-3.5">
                     <span
-                      className={`text-[10.5px] font-extrabold uppercase tracking-wide px-3 py-1.5 rounded-full whitespace-nowrap ${
-                        statusChip[o.status] ?? "bg-gray-100 text-gray-500"
-                      }`}
+                      className="text-[10.5px] font-extrabold uppercase tracking-wide px-3 py-1.5 rounded-full whitespace-nowrap border"
+                      style={statusTint(statusColorFor(o.status))}
                     >
-                      {statusLabel[o.status] ?? o.status}
+                      {statusLabel(statuses, o.status)}
                     </span>
                   </td>
                   <td className="px-4 py-3.5 text-gray-400 font-semibold whitespace-nowrap text-[12.5px]">{o.date}</td>

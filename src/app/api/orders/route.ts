@@ -1,11 +1,23 @@
-import { NextRequest } from "next/server";
-import { eq, inArray } from "drizzle-orm";
+import { NextRequest, after } from "next/server";
+import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { deliveryAreas, orders, products } from "@/db/schema";
-import { effectivePrice, padOrderCode } from "@/lib/format";
+import { dbImageUrl, effectivePrice, padOrderCode } from "@/lib/format";
 import { getSessionCustomer } from "@/lib/auth";
 
 type IncomingItem = { id: number; qty: number };
+
+/** Best-effort visitor IP (Netlify → CDN → proxy → direct). */
+function clientIp(req: NextRequest): string | null {
+  const h = req.headers;
+  const candidate =
+    h.get("x-nf-client-connection-ip") ||
+    h.get("cf-connecting-ip") ||
+    h.get("x-real-ip") ||
+    h.get("x-forwarded-for")?.split(",")[0];
+  const ip = candidate?.trim();
+  return ip && ip.length <= 64 ? ip : null;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -34,20 +46,36 @@ export async function POST(req: NextRequest) {
       return Response.json({ error: "Cart is empty" }, { status: 400 });
     }
 
-    const area = await db
-      .select()
-      .from(deliveryAreas)
-      .where(eq(deliveryAreas.id, deliveryAreaId))
-      .limit(1);
+    const ids = items.map((i) => i.id);
+
+    /* These three do not depend on each other. Running them in sequence cost
+       the shopper three round-trips to the database for no reason. */
+    const [area, dbProducts, customer] = await Promise.all([
+      db.select({ name: deliveryAreas.name, charge: deliveryAreas.charge })
+        .from(deliveryAreas)
+        .where(eq(deliveryAreas.id, deliveryAreaId))
+        .limit(1),
+      /* Only the columns the order snapshot needs. `images` holds base64 data
+         URLs, so selecting the whole row dragged hundreds of kilobytes across
+         the wire per product. The snapshot keeps an /api/img link instead of
+         the image itself, which is what made the orders table — and every
+         admin query that touches it — so heavy. */
+      db.select({
+        id: products.id,
+        name: products.name,
+        imageVersion: sql<string | null>`substr(md5(${products.images}->>0), 1, 8)`,
+        regularPrice: products.regularPrice,
+        sellPrice: products.sellPrice,
+        freeDelivery: products.freeDelivery,
+      })
+        .from(products)
+        .where(inArray(products.id, ids)),
+      getSessionCustomer(),
+    ]);
+
     if (!area[0]) {
       return Response.json({ error: "Invalid delivery area" }, { status: 400 });
     }
-
-    const ids = items.map((i) => i.id);
-    const dbProducts = await db
-      .select()
-      .from(products)
-      .where(inArray(products.id, ids));
 
     const orderItems = items.map((i) => {
       const p = dbProducts.find((d) => d.id === i.id);
@@ -55,35 +83,52 @@ export async function POST(req: NextRequest) {
       return {
         productId: p.id,
         name: p.name,
-        image: (p.images && p.images[0]) || "",
+        image: dbImageUrl("p", p.id, 0, p.imageVersion),
         price: effectivePrice(p.regularPrice, p.sellPrice),
         qty: Math.min(Math.max(1, i.qty), 99),
       };
     });
 
     const subtotal = orderItems.reduce((a, i) => a + i.price * i.qty, 0);
-    const total = subtotal + area[0].charge;
+    /* Delivery is free only when every product in the order ships free.
+       Recomputed here so a tampered client payload cannot skip the charge. */
+    const shipsFree = items.every((i) => dbProducts.find((d) => d.id === i.id)?.freeDelivery === true);
+    const deliveryCharge = shipsFree ? 0 : area[0].charge;
+    const total = subtotal + deliveryCharge;
 
-    const customer = await getSessionCustomer();
-
+    /* One statement instead of insert-then-update: the id is taken from the
+       sequence up front so `code` can be written in the same round-trip. */
     const [inserted] = await db
       .insert(orders)
       .values({
-        code: "TMP",
+        id: sql`nextval(pg_get_serial_sequence('orders', 'id'))`,
+        code: sql`lpad(currval(pg_get_serial_sequence('orders', 'id'))::text, 6, '0')`,
         customerId: customer?.id ?? null,
         customerName: customerName.trim(),
         phone: phone.trim(),
         address: address.trim(),
-        deliveryAreaName: area[0].name,
-        deliveryCharge: area[0].charge,
+        deliveryAreaName: shipsFree ? `${area[0].name} (Free delivery)` : area[0].name,
+        deliveryCharge,
         subtotal,
         total,
         items: orderItems,
+        customerIp: clientIp(req),
       })
-      .returning({ id: orders.id });
+      .returning({ id: orders.id, code: orders.code });
 
-    const code = padOrderCode(inserted.id);
-    await db.update(orders).set({ code }).where(eq(orders.id, inserted.id));
+    const code = inserted.code || padOrderCode(inserted.id);
+
+    /* Reputation lookup must never make the shopper wait — `after` runs it
+       once the response has already gone out. The scheduled job backfills
+       anything this misses. */
+    after(async () => {
+      try {
+        const { autoCheckEnabled, checkPhone } = await import("@/lib/admin-fraud");
+        if (await autoCheckEnabled()) await checkPhone(phone.trim());
+      } catch (err) {
+        console.error("fraud auto-check failed:", err);
+      }
+    });
 
     return Response.json({ ok: true, code });
   } catch (e) {

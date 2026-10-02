@@ -8,6 +8,12 @@
 
 html {
   scroll-behavior: smooth;
+  /* Hard stop for sideways scrolling on mobile.
+     `hidden` is only the fallback for engines without `clip`; `clip` wins where
+     supported and — unlike `hidden` — never turns the element into a scroll
+     container, so `position: sticky` keeps working. */
+  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {
@@ -15,7 +21,11 @@ body {
   background-color: #fafafc;
   color: #23252d;
   -webkit-font-smoothing: antialiased;
+  /* `clip` only — NEVER `hidden` here: `overflow-x: hidden` on <body> makes it
+     a scroll container and breaks the sticky header. */
+  overflow-x: clip;
 }
+
 
 .font-display {
   font-family: var(--font-display), var(--font-sans), ui-sans-serif, sans-serif;

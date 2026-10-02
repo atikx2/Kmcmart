@@ -22,7 +22,7 @@ export default async function AdminLoginPage() {
   const settings = await getSettings();
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-[1.05fr_1fr]">
+    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
       {/* left brand panel */}
       <div className="hidden lg:flex relative overflow-hidden grad-bg text-white flex-col justify-between p-12">
         {/* decorative shapes */}

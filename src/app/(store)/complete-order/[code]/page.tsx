@@ -3,16 +3,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MapPin, Package, Phone, PhoneCall, ShoppingBag, Truck } from "lucide-react";
-import { getOrderByCode, getSettings } from "@/lib/data";
+import { getOrderByCode, getSettings, getSiteText } from "@/lib/data";
 import { taka } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Order Complete" };
-
-const steps = [
-  { icon: PhoneCall, title: "Confirmation Call", sub: "We will call you shortly" },
-  { icon: Package, title: "Packing", sub: "Your order gets packed" },
-  { icon: Truck, title: "Delivery", sub: "Within 24–72 hours" },
-];
 
 export default async function CompleteOrderPage({
   params,
@@ -20,8 +14,14 @@ export default async function CompleteOrderPage({
   params: Promise<{ code: string }>;
 }) {
   const { code } = await params;
-  const [order, settings] = await Promise.all([getOrderByCode(code), getSettings()]);
+  const [order, settings, text] = await Promise.all([getOrderByCode(code), getSettings(), getSiteText()]);
   if (!order) notFound();
+
+  const steps = [
+    { icon: PhoneCall, title: text.stepCallTitle, sub: text.stepCallSub },
+    { icon: Package, title: text.stepPackTitle, sub: text.stepPackSub },
+    { icon: Truck, title: text.stepDeliveryTitle, sub: text.stepDeliverySub },
+  ];
 
   const firstName = order.customerName.trim().split(" ")[0];
 
@@ -37,16 +37,16 @@ export default async function CompleteOrderPage({
           </div>
 
           <h1 className="mt-5 font-display text-2xl md:text-3xl font-extrabold tracking-tight">
-            Thank You, <span className="grad-text">{firstName}!</span>
+            {text.thankYou}, <span className="grad-text">{firstName}!</span>
           </h1>
           <p className="mt-2 text-sm md:text-[15px] text-gray-500 font-semibold">
-            Your order has been placed successfully.
+            {text.orderPlaced}
           </p>
 
           <div className="mt-5 inline-flex items-center gap-2 grad-soft rounded-full px-5 py-2.5">
             <ShoppingBag size={15} className="text-[var(--g2)]" />
             <span className="text-sm font-extrabold text-gray-700">
-              Order ID: <span className="grad-text font-display text-base">#{order.code}</span>
+              {text.orderId}: <span className="grad-text font-display text-base">#{order.code}</span>
             </span>
           </div>
 
@@ -66,7 +66,7 @@ export default async function CompleteOrderPage({
 
         {/* order details */}
         <div className="mt-5 bg-white rounded-[28px] border border-gray-100 shadow-[0_20px_60px_rgba(17,18,28,0.08)] p-5 md:p-8">
-          <h2 className="font-display font-extrabold text-base md:text-lg mb-4">Order Details</h2>
+          <h2 className="font-display font-extrabold text-base md:text-lg mb-4">{text.orderDetails}</h2>
 
           <div className="space-y-2.5">
             {order.items.map((item) => (
@@ -89,15 +89,19 @@ export default async function CompleteOrderPage({
 
           <div className="mt-5 space-y-2 text-[13.5px] font-semibold text-gray-500">
             <div className="flex justify-between">
-              <span>Subtotal</span>
+              <span>{text.subtotal}</span>
               <span className="text-gray-800">{taka(order.subtotal)}</span>
             </div>
             <div className="flex justify-between">
-              <span>Delivery ({order.deliveryAreaName})</span>
+              <span>
+                {text.deliveryWord} ({order.deliveryAreaName})
+              </span>
               <span className="text-gray-800">{taka(order.deliveryCharge)}</span>
             </div>
             <div className="border-t border-dashed border-gray-200 pt-2.5 flex justify-between items-center">
-              <span className="text-gray-800 font-extrabold">Total (Cash on Delivery)</span>
+              <span className="text-gray-800 font-extrabold">
+                {text.total} ({text.cashOnDelivery})
+              </span>
               <span className="grad-text font-display font-extrabold text-2xl">{taka(order.total)}</span>
             </div>
           </div>
@@ -118,14 +122,14 @@ export default async function CompleteOrderPage({
               className="flex-1 grad-bg text-white rounded-2xl py-3.5 text-sm font-extrabold flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.99] transition"
             >
               <ShoppingBag size={15} />
-              Continue Shopping
+              {text.continueShopping}
             </Link>
             <a
               href={`tel:${settings.phone.replace(/\s/g, "")}`}
               className="flex-1 grad-border rounded-2xl py-3.5 text-sm font-extrabold text-gray-800 flex items-center justify-center gap-2 hover:shadow-lg active:scale-[0.99] transition"
             >
               <Phone size={15} className="text-[var(--g2)]" />
-              Call: {settings.phone}
+              {text.callNow}: {settings.phone}
             </a>
           </div>
         </div>
