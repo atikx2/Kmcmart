@@ -18,6 +18,7 @@ import {
   type ProductLite,
   type Settings,
 } from "@/db/schema";
+import { isLang, mergeLegacyText, resolveText, type SiteText } from "@/lib/i18n";
 
 /* ---------------- settings / layout data (cached) ---------------- */
 
@@ -29,6 +30,12 @@ export const getSettings = unstable_cache(
   ["settings"],
   { revalidate: 60, tags: ["settings"] }
 );
+
+/** Storefront strings for the language chosen in Site Settings. */
+export async function getSiteText(): Promise<SiteText> {
+  const s = await getSettings();
+  return resolveText(isLang(s.language) ? s.language : "en", mergeLegacyText(s));
+}
 
 export const getMenus = unstable_cache(
   async (): Promise<Menu[]> => {

@@ -4,8 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2, Lock, LogIn, Phone, ShieldCheck, User } from "lucide-react";
+import { useText } from "@/components/site/Providers";
 
 export default function LoginPage() {
+  const text = useText();
   const router = useRouter();
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -40,15 +42,15 @@ export default function LoginPage() {
           <span className="inline-grid place-items-center w-14 h-14 rounded-2xl grad-bg text-white mb-4">
             <User size={22} />
           </span>
-          <h1 className="font-display text-2xl font-extrabold tracking-tight">Welcome Back</h1>
+          <h1 className="font-display text-2xl font-extrabold tracking-tight">{text.loginTitle}</h1>
           <p className="text-[13px] text-gray-400 font-semibold mt-1.5">
-            Login to track your orders & manage your account
+            {text.loginSubtitle}
           </p>
         </div>
 
         <form onSubmit={submit} className="mt-7 space-y-4">
           <label className="block">
-            <span className="block text-[12.5px] font-extrabold text-gray-700 mb-1.5">Mobile Number</span>
+            <span className="block text-[12.5px] font-extrabold text-gray-700 mb-1.5">{text.mobileNumber}</span>
             <span className="relative block">
               <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
@@ -63,13 +65,13 @@ export default function LoginPage() {
           </label>
 
           <label className="block">
-            <span className="block text-[12.5px] font-extrabold text-gray-700 mb-1.5">Password</span>
+            <span className="block text-[12.5px] font-extrabold text-gray-700 mb-1.5">{text.password}</span>
             <span className="relative block">
               <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="password"
                 className="field"
-                placeholder="Your password"
+                placeholder={text.password}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -88,14 +90,14 @@ export default function LoginPage() {
             className="w-full grad-bg text-white rounded-2xl py-3.5 text-sm font-extrabold flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.99] transition disabled:opacity-70"
           >
             {loading ? <Loader2 size={16} className="animate-spin" /> : <LogIn size={16} />}
-            {loading ? "Logging in…" : "Login"}
+            {loading ? "…" : text.login}
           </button>
         </form>
 
         <p className="mt-6 text-center text-[13px] text-gray-500 font-semibold">
-          New to Kmcmartbd?{" "}
+          {text.noAccount}{" "}
           <Link href="/register" className="grad-text font-extrabold hover:underline">
-            Create an account
+            {text.registerTitle}
           </Link>
         </p>
         <p className="mt-3 text-center text-[11.5px] text-gray-400 font-semibold">

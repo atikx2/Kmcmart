@@ -70,6 +70,7 @@ function pageTitle(pathname: string): string {
   if (/^\/admin\/customers\/.+/.test(pathname)) return "Customer Profile";
   if (pathname.startsWith("/admin/customers")) return "Customers";
   if (pathname.startsWith("/admin/roles")) return "Role Management";
+  if (pathname.startsWith("/admin/settings")) return "Site Settings";
   return "Admin Panel";
 }
 
@@ -88,7 +89,7 @@ const NAV: NavEntry[] = [
   { href: "/admin/reports", label: "Report", icon: ChartColumn, perm: "reports" },
   { href: "/admin/api", label: "API", icon: Webhook, soon: true, perm: "api" },
   { href: "/admin/roles", label: "Roles", icon: ShieldCheck, perm: "roles" },
-  { label: "Site Settings", icon: Settings, soon: true, perm: "settings" },
+  { href: "/admin/settings", label: "Site Settings", icon: Settings, perm: "settings" },
 ];
 
 /** Hides every page the admin has no key for, plus any section header left empty. */
@@ -262,6 +263,7 @@ export default function AdminShell({
   logo,
   siteName,
   defaultCollapsed = false,
+  menuMode = "remember",
   children,
 }: {
   email: string;
@@ -274,6 +276,8 @@ export default function AdminShell({
   /** Read from the `kmc_admin_nav` cookie on the server so the sidebar renders
       in its remembered state on the very first paint (no expand→collapse flash). */
   defaultCollapsed?: boolean;
+  /** "expanded" | "collapsed" | "remember" — from Site Settings. */
+  menuMode?: string;
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -388,18 +392,34 @@ export default function AdminShell({
 
         {navContent(collapsed)}
 
-        <div className="border-t border-gray-100 p-3">
-          <button
-            onClick={toggleCollapse}
-            className={`w-full flex items-center gap-3 rounded-2xl px-3.5 py-3 text-[13px] font-extrabold text-gray-500 hover:bg-gray-50 transition ${
-              collapsed ? "justify-center px-0" : ""
-            }`}
-            aria-label={collapsed ? "Expand menu" : "Collapse menu"}
-          >
-            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-            {!collapsed && <span>Collapse Menu</span>}
-          </button>
-        </div>
+        {menuMode === "remember" ? (
+          <div className="border-t border-gray-100 p-3">
+            <button
+              onClick={toggleCollapse}
+              className={`w-full flex items-center gap-3 rounded-2xl px-3.5 py-3 text-[13px] font-extrabold text-gray-500 hover:bg-gray-50 transition ${
+                collapsed ? "justify-center px-0" : ""
+              }`}
+              aria-label={collapsed ? "Expand menu" : "Collapse menu"}
+            >
+              {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+              {!collapsed && <span>Collapse Menu</span>}
+            </button>
+          </div>
+        ) : (
+          /* The behaviour is pinned in Site Settings — show where to change it. */
+          <div className="border-t border-gray-100 p-3">
+            <Link
+              href="/admin/settings"
+              title="Sidebar behaviour is set in Site Settings"
+              className={`w-full flex items-center gap-3 rounded-2xl px-3.5 py-3 text-[12px] font-extrabold text-gray-400 hover:bg-gray-50 transition ${
+                collapsed ? "justify-center px-0" : ""
+              }`}
+            >
+              {collapsed ? <PanelLeftOpen size={18} /> : <Settings size={17} />}
+              {!collapsed && <span>Menu: {menuMode === "collapsed" ? "always collapsed" : "always expanded"}</span>}
+            </Link>
+          </div>
+        )}
       </aside>
 
       {/* mobile: an always-visible icon rail that slides open into a full panel.

@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import type { ProductLite } from "@/db/schema";
 import { discountPercent, effectivePrice, taka } from "@/lib/format";
-import { useCart } from "@/components/site/Providers";
+import { useCart, useText } from "@/components/site/Providers";
 
 export type ProductView = ProductLite & {
   images: string[];
@@ -25,13 +25,12 @@ export type ProductView = ProductLite & {
 
 export default function ProductClient({
   product,
-  buyNowText,
   deliveryCharge,
 }: {
   product: ProductView;
-  buyNowText: string;
   deliveryCharge: number;
 }) {
+  const text = useText();
   const router = useRouter();
   const { addItem } = useCart();
   const [qty, setQty] = useState(1);
@@ -45,7 +44,11 @@ export default function ProductClient({
       {/* gallery */}
       <div>
         <div className="relative rounded-3xl overflow-hidden bg-white border border-gray-100 shadow-[0_14px_50px_rgba(17,18,28,0.1)] h-[300px] sm:h-[360px] md:h-auto md:aspect-[4/4.7]">
-          {pct !== null && <span className="offer-tag text-xs">{pct}% OFF</span>}
+          {pct !== null && (
+            <span className="offer-tag text-xs">
+              {pct}% {text.off}
+            </span>
+          )}
           <Image
             src={product.images[active] || product.image}
             alt={product.name}
@@ -104,7 +107,7 @@ export default function ProductClient({
             }`}
           >
             <span className={`w-1.5 h-1.5 rounded-full ${product.stock > 0 ? "bg-emerald-500" : "bg-red-500"}`} />
-            {product.stock > 0 ? `In Stock (${product.stock} pcs)` : "Out of Stock"}
+            {product.stock > 0 ? `${text.inStock} (${product.stock} ${text.pcs})` : text.outOfStock}
           </span>
         </div>
 
@@ -114,7 +117,7 @@ export default function ProductClient({
             <button
               onClick={() => setQty((q) => Math.max(1, q - 1))}
               className="w-10 h-full grid place-items-center text-gray-500 hover:text-gray-900"
-              aria-label="Decrease quantity"
+              aria-label={text.quantity}
             >
               <Minus size={15} />
             </button>
@@ -122,7 +125,7 @@ export default function ProductClient({
             <button
               onClick={() => setQty((q) => Math.min(product.stock || 99, q + 1))}
               className="w-10 h-full grid place-items-center text-gray-500 hover:text-gray-900"
-              aria-label="Increase quantity"
+              aria-label={text.quantity}
             >
               <Plus size={15} />
             </button>
@@ -145,7 +148,7 @@ export default function ProductClient({
             className="flex-1 grad-border rounded-2xl text-sm font-extrabold text-gray-800 flex items-center justify-center gap-2 hover:shadow-lg active:scale-[0.99] transition min-h-[48px]"
           >
             <ShoppingCart size={16} className="text-[var(--g2)]" />
-            Add to Cart
+            {text.addToCart}
           </button>
           <button
             aria-label="Add to wishlist"
@@ -161,7 +164,7 @@ export default function ProductClient({
           className="mt-3 w-full grad-bg text-white rounded-2xl py-3.5 md:py-4 text-sm md:text-[15px] font-extrabold flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.99] transition disabled:opacity-50 shadow-[0_12px_32px_rgba(255,61,119,0.3)]"
         >
           <ShoppingBag size={17} strokeWidth={2.4} />
-          {buyNowText} — {taka(price * qty)}
+          {text.buyNow} — {taka(price * qty)}
         </button>
 
         {/* delivery perks */}
@@ -169,11 +172,11 @@ export default function ProductClient({
           {[
             {
               icon: Truck,
-              title: product.freeDelivery ? "Free Delivery" : "Home Delivery",
-              sub: product.freeDelivery ? "No delivery charge" : `Charge from ${taka(deliveryCharge)}`,
+              title: product.freeDelivery ? text.freeDelivery : text.homeDelivery,
+              sub: product.freeDelivery ? text.noDeliveryCharge : `${text.chargeFrom} ${taka(deliveryCharge)}`,
             },
-            { icon: BadgeCheck, title: "100% Genuine", sub: "Quality checked" },
-            { icon: RotateCcw, title: "Easy Return", sub: "7 days replacement" },
+            { icon: BadgeCheck, title: text.genuineTitle, sub: text.genuineSub },
+            { icon: RotateCcw, title: text.returnTitle, sub: text.returnSub },
           ].map(({ icon: Icon, title, sub }) => (
             <div key={title} className="bg-white border border-gray-100 rounded-2xl px-3.5 py-3 flex items-center gap-2.5">
               <span className="grad-bg text-white rounded-xl p-2 shrink-0">

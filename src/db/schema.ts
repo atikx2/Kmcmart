@@ -39,6 +39,23 @@ export const settings = pgTable("settings", {
     .notNull()
     .default("Find your favourites from our wide range of collections"),
   buyNowText: text("buy_now_text").notNull().default("Buy Now"),
+  /* ---- STEP 7 ---- */
+  /** Browser tab title. Empty = "<siteName> — Best Online Shopping in Bangladesh". */
+  metaTitle: text("meta_title").notNull().default(""),
+  /** Meta description. Empty = the slogan. */
+  metaDescription: text("meta_description").notNull().default(""),
+  /** Favicon URL or data URL. */
+  favicon: text("favicon").notNull().default("/favicon.ico"),
+  /** "image" = uploaded logo, "text" = site name rendered in the brand gradient. */
+  logoMode: text("logo_mode").notNull().default("image"),
+  /** Wordmark used when logoMode is "text". Empty falls back to siteName. */
+  logoText: text("logo_text").notNull().default(""),
+  /** Storefront language: "en" | "bn". */
+  language: text("language").notNull().default("en"),
+  /** Per-language string overrides keyed "<lang>:<key>". */
+  textOverrides: jsonb("text_overrides").$type<Record<string, string>>().notNull().default({}),
+  /** Admin sidebar: "expanded" | "collapsed" | "remember". */
+  adminMenuMode: text("admin_menu_mode").notNull().default("remember"),
 });
 
 export const menus = pgTable("menus", {

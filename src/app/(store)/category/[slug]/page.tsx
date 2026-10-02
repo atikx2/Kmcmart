@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Package } from "lucide-react";
-import { getCategoryBySlug, getProducts, getSettings } from "@/lib/data";
+import { getCategoryBySlug, getProducts, getSiteText } from "@/lib/data";
 import ProductsBlock from "@/components/home/ProductsBlock";
 
 export async function generateMetadata({
@@ -21,7 +21,7 @@ export default async function CategoryPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const [settings, category] = await Promise.all([getSettings(), getCategoryBySlug(slug)]);
+  const [text, category] = await Promise.all([getSiteText(), getCategoryBySlug(slug)]);
   if (!category) notFound();
 
   const result = await getProducts({ categorySlug: slug, limit: 12 });
@@ -34,7 +34,7 @@ export default async function CategoryPage({
           <h1 className="font-display text-2xl md:text-4xl font-extrabold tracking-tight">{category.name}</h1>
           <p className="mt-2 text-white/80 text-xs md:text-sm font-semibold flex items-center justify-center gap-1.5">
             <Package size={14} />
-            {result.total} products available
+            {result.total} {text.itemsWord}
           </p>
         </div>
       </div>
@@ -44,7 +44,6 @@ export default async function CategoryPage({
           initialItems={result.items}
           initialHasMore={result.hasMore}
           categorySlug={slug}
-          buyNowText={settings.buyNowText}
           mobilePeek={6}
         />
       </div>

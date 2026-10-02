@@ -1,7 +1,8 @@
 import Link from "next/link";
-import Image from "next/image";
 import { Mail, MapPin, Phone } from "lucide-react";
 import type { Menu, Settings } from "@/db/schema";
+import type { SiteText } from "@/lib/i18n";
+import Brand from "./Brand";
 
 function FacebookIcon({ size = 16 }: { size?: number }) {
   return (
@@ -37,7 +38,15 @@ function WhatsappIcon({ size = 16 }: { size?: number }) {
   );
 }
 
-export default function Footer({ settings, menus }: { settings: Settings; menus: Menu[] }) {
+export default function Footer({
+  settings,
+  menus,
+  text,
+}: {
+  settings: Settings;
+  menus: Menu[];
+  text: SiteText;
+}) {
   const socials = [
     { href: settings.facebook, Icon: FacebookIcon, label: "Facebook" },
     { href: settings.instagram, Icon: InstagramIcon, label: "Instagram" },
@@ -52,13 +61,7 @@ export default function Footer({ settings, menus }: { settings: Settings; menus:
         {/* brand */}
         <div className="min-w-0">
           <Link href="/">
-            <Image
-              src={settings.logoFooter}
-              alt={settings.siteName}
-              width={180}
-              height={44}
-              className="h-11 w-auto"
-            />
+            <Brand settings={settings} variant="footer" width={180} height={44} className="h-11 w-auto" textClassName="text-[26px]" />
           </Link>
           <p className="mt-4 text-sm text-gray-400 leading-relaxed max-w-xs">{settings.slogan}</p>
           <div className="mt-5 flex items-center gap-2.5">
@@ -79,7 +82,7 @@ export default function Footer({ settings, menus }: { settings: Settings; menus:
 
         {/* quick links */}
         <div className="min-w-0">
-          <h4 className="font-display font-extrabold text-base">Quick Links</h4>
+          <h4 className="font-display font-extrabold text-base">{text.quickLinks}</h4>
           <span className="block mt-2 h-[3px] w-9 rounded-full grad-bg" />
           <ul className="mt-5 grid grid-cols-2 md:grid-cols-1 gap-y-2.5 gap-x-4">
             {menus.map((m) => (
@@ -98,7 +101,7 @@ export default function Footer({ settings, menus }: { settings: Settings; menus:
 
         {/* contact */}
         <div className="min-w-0">
-          <h4 className="font-display font-extrabold text-base">Contact Us</h4>
+          <h4 className="font-display font-extrabold text-base">{text.contactUs}</h4>
           <span className="block mt-2 h-[3px] w-9 rounded-full grad-bg" />
           <ul className="mt-5 space-y-3.5 text-sm">
             <li>
@@ -133,11 +136,11 @@ export default function Footer({ settings, menus }: { settings: Settings; menus:
       <div className="border-t border-white/10">
         <div className="max-w-7xl mx-auto px-4 lg:px-6 py-5 flex flex-col md:flex-row items-center justify-between gap-2">
           <p className="text-xs text-gray-500">
-            © {new Date().getFullYear()} {settings.siteName}. All rights reserved.
+            © {new Date().getFullYear()} {settings.siteName}. {text.allRightsReserved}
           </p>
           <p className="text-xs text-gray-500 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse" />
-            Cash on Delivery Available Nationwide
+            {text.cashOnDelivery}
           </p>
         </div>
       </div>

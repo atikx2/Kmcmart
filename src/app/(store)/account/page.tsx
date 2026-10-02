@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Package, Phone, ShoppingBag } from "lucide-react";
 import { getSessionCustomer } from "@/lib/auth";
-import { getOrdersForCustomer } from "@/lib/data";
+import { getOrdersForCustomer, getSiteText } from "@/lib/data";
 import { taka } from "@/lib/format";
 import LogoutButton from "./LogoutButton";
 
@@ -20,7 +20,10 @@ export default async function AccountPage() {
   const customer = await getSessionCustomer();
   if (!customer) redirect("/login");
 
-  const myOrders = await getOrdersForCustomer(customer.id, customer.phone);
+  const [myOrders, text] = await Promise.all([
+    getOrdersForCustomer(customer.id, customer.phone),
+    getSiteText(),
+  ]);
 
   return (
     <div className="max-w-4xl mx-auto px-4 lg:px-6 py-8 md:py-12">
@@ -49,7 +52,7 @@ export default async function AccountPage() {
           <span className="grad-bg text-white rounded-xl p-2">
             <Package size={15} />
           </span>
-          My Orders
+          {text.myOrders}
           <span className="text-xs font-bold text-gray-400">({myOrders.length})</span>
         </h2>
 
@@ -58,13 +61,13 @@ export default async function AccountPage() {
             <div className="mx-auto w-16 h-16 rounded-full grad-soft grid place-items-center mb-4">
               <ShoppingBag size={24} className="text-gray-400" />
             </div>
-            <p className="font-extrabold text-gray-800">No orders yet</p>
-            <p className="text-sm text-gray-400 mt-1">Your orders with this number will show up here</p>
+            <p className="font-extrabold text-gray-800">{text.noOrders}</p>
+            
             <Link
               href="/"
               className="inline-block mt-5 grad-bg text-white text-sm font-extrabold px-7 py-3 rounded-full hover:opacity-90 transition"
             >
-              Start Shopping
+              {text.continueShopping}
             </Link>
           </div>
         ) : (
@@ -90,7 +93,7 @@ export default async function AccountPage() {
                           month: "short",
                           year: "numeric",
                         })}{" "}
-                        • {o.items.reduce((a, i) => a + i.qty, 0)} items
+                        • {o.items.reduce((a, i) => a + i.qty, 0)} {text.itemsWord}
                       </p>
                     </div>
                   </div>

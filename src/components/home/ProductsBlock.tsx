@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronDown, Loader2 } from "lucide-react";
 import type { ProductLite } from "@/db/schema";
+import { useText } from "@/components/site/Providers";
 import ProductCard from "./ProductCard";
 
 const PAGE = 12;
@@ -11,15 +12,14 @@ export default function ProductsBlock({
   initialItems,
   initialHasMore,
   categorySlug,
-  buyNowText,
   mobilePeek = 4,
 }: {
   initialItems: ProductLite[];
   initialHasMore: boolean;
   categorySlug: string;
-  buyNowText: string;
   mobilePeek?: number;
 }) {
+  const text = useText();
   const [items, setItems] = useState<ProductLite[]>(initialItems);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [loading, setLoading] = useState(false);
@@ -44,7 +44,7 @@ export default function ProductsBlock({
 
   if (items.length === 0) {
     return (
-      <p className="text-center text-sm text-gray-400 py-10">No products available right now.</p>
+      <p className="text-center text-sm text-gray-400 py-10">{text.noProducts}</p>
     );
   }
 
@@ -53,7 +53,7 @@ export default function ProductsBlock({
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 md:gap-4">
         {items.map((p, i) => (
           <div key={p.id} className={!expanded && i >= mobilePeek ? "hidden md:block" : "animate-fade-up"}>
-            <ProductCard product={p} buyNowText={buyNowText} />
+            <ProductCard product={p} />
           </div>
         ))}
       </div>
@@ -72,7 +72,7 @@ export default function ProductsBlock({
               </>
             ) : (
               <>
-                Load More
+                {text.loadMore}
                 <span className="grad-bg text-white rounded-full p-1">
                   <ChevronDown size={13} strokeWidth={3} />
                 </span>

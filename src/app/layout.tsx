@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { getSettings } from "@/lib/data";
+import { isLang } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -33,12 +34,12 @@ export const viewport: Viewport = {
 
 export async function generateMetadata(): Promise<Metadata> {
   const s = await getSettings();
+  const title = s.metaTitle.trim() || `${s.siteName} — Best Online Shopping in Bangladesh`;
+  const favicon = s.favicon.trim();
   return {
-    title: {
-      default: `${s.siteName} — Best Online Shopping in Bangladesh`,
-      template: `%s | ${s.siteName}`,
-    },
-    description: s.slogan,
+    title: { default: title, template: `%s | ${s.siteName}` },
+    description: s.metaDescription.trim() || s.slogan,
+    ...(favicon ? { icons: { icon: favicon, shortcut: favicon, apple: favicon } } : {}),
   };
 }
 
@@ -48,7 +49,10 @@ export default async function RootLayout({
   const settings = await getSettings();
 
   return (
-    <html lang="en" className={`${manrope.variable} ${grotesk.variable}`}>
+    <html
+      lang={isLang(settings.language) ? settings.language : "en"}
+      className={`${manrope.variable} ${grotesk.variable}`}
+    >
       <body className="min-h-screen flex flex-col">
         <style>{`:root{--g1:${settings.colorFrom};--g2:${settings.colorTo};}`}</style>
         {children}

@@ -22,6 +22,12 @@ export default async function AdminPanelLayout({
     cookies(),
   ]);
 
+  /* "Sidebar menu behaviour" from Site Settings. The cookie only counts when
+     the admin chose "remember". */
+  const mode = settings.adminMenuMode;
+  const defaultCollapsed =
+    mode === "collapsed" ? true : mode === "expanded" ? false : jar.get(NAV_COOKIE)?.value === "1";
+
   return (
     <AdminShell
       email={admin.email}
@@ -31,7 +37,8 @@ export default async function AdminPanelLayout({
       pendingOrders={pendingOrders}
       logo={settings.logoHeader}
       siteName={settings.siteName}
-      defaultCollapsed={jar.get(NAV_COOKIE)?.value === "1"}
+      defaultCollapsed={defaultCollapsed}
+      menuMode={mode}
     >
       {children}
     </AdminShell>

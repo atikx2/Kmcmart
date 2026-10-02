@@ -4,8 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2, Lock, Phone, User, UserPlus } from "lucide-react";
+import { useText } from "@/components/site/Providers";
 
 export default function RegisterPage() {
+  const text = useText();
   const router = useRouter();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -46,20 +48,20 @@ export default function RegisterPage() {
           <span className="inline-grid place-items-center w-14 h-14 rounded-2xl grad-bg text-white mb-4">
             <UserPlus size={22} />
           </span>
-          <h1 className="font-display text-2xl font-extrabold tracking-tight">Create Account</h1>
+          <h1 className="font-display text-2xl font-extrabold tracking-tight">{text.registerTitle}</h1>
           <p className="text-[13px] text-gray-400 font-semibold mt-1.5">
-            Join Kmcmartbd to track all your orders in one place
+            {text.registerSubtitle}
           </p>
         </div>
 
         <form onSubmit={submit} className="mt-7 space-y-4">
           <label className="block">
-            <span className="block text-[12.5px] font-extrabold text-gray-700 mb-1.5">Full Name</span>
+            <span className="block text-[12.5px] font-extrabold text-gray-700 mb-1.5">{text.fullName}</span>
             <span className="relative block">
               <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 className="field"
-                placeholder="e.g. Rahim Uddin"
+                placeholder={text.fullNamePlaceholder}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
@@ -67,7 +69,7 @@ export default function RegisterPage() {
           </label>
 
           <label className="block">
-            <span className="block text-[12.5px] font-extrabold text-gray-700 mb-1.5">Mobile Number</span>
+            <span className="block text-[12.5px] font-extrabold text-gray-700 mb-1.5">{text.mobileNumber}</span>
             <span className="relative block">
               <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
@@ -82,7 +84,7 @@ export default function RegisterPage() {
           </label>
 
           <label className="block">
-            <span className="block text-[12.5px] font-extrabold text-gray-700 mb-1.5">Password</span>
+            <span className="block text-[12.5px] font-extrabold text-gray-700 mb-1.5">{text.password}</span>
             <span className="relative block">
               <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
@@ -96,7 +98,7 @@ export default function RegisterPage() {
           </label>
 
           <label className="block">
-            <span className="block text-[12.5px] font-extrabold text-gray-700 mb-1.5">Confirm Password</span>
+            <span className="block text-[12.5px] font-extrabold text-gray-700 mb-1.5">{text.confirmPassword}</span>
             <span className="relative block">
               <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
@@ -121,14 +123,14 @@ export default function RegisterPage() {
             className="w-full grad-bg text-white rounded-2xl py-3.5 text-sm font-extrabold flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.99] transition disabled:opacity-70"
           >
             {loading ? <Loader2 size={16} className="animate-spin" /> : <UserPlus size={16} />}
-            {loading ? "Creating account…" : "Create Account"}
+            {loading ? "…" : text.registerTitle}
           </button>
         </form>
 
         <p className="mt-6 text-center text-[13px] text-gray-500 font-semibold">
-          Already have an account?{" "}
+          {text.haveAccount}{" "}
           <Link href="/login" className="grad-text font-extrabold hover:underline">
-            Login here
+            {text.login}
           </Link>
         </p>
       </div>

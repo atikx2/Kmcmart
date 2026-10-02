@@ -15,6 +15,7 @@ import Image from "next/image";
 import { Minus, Plus, ShoppingBag, Trash2, Truck, X, ArrowRight } from "lucide-react";
 import type { ProductLite } from "@/db/schema";
 import { effectivePrice, taka } from "@/lib/format";
+import { defaultText, type SiteText } from "@/lib/i18n";
 
 export type CartItem = {
   id: number;
@@ -54,9 +55,17 @@ export function useCart() {
   return ctx;
 }
 
+/* Storefront strings for the language chosen in Site Settings. Resolved on the
+   server and handed down, so client components never read the DB. */
+const TextContext = createContext<SiteText>(defaultText("en"));
+
+export function useText(): SiteText {
+  return useContext(TextContext);
+}
+
 const STORAGE_KEY = "kmc_cart_v1";
 
-export default function Providers({ children }: { children: ReactNode }) {
+export default function Providers({ text, children }: { text: SiteText; children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [open, setOpen] = useState(false);
   const loaded = useRef(false);
@@ -115,7 +124,7 @@ export default function Providers({ children }: { children: ReactNode }) {
 
   return (
     <CartContext.Provider value={value}>
-      {children}
+      <TextContext.Provider value={text}>{children}</TextContext.Provider>
       {/* cart drawer */}
       <div
         className={`fixed inset-0 z-[90] overflow-hidden transition ${open ? "pointer-events-auto" : "pointer-events-none"}`}
@@ -137,7 +146,7 @@ export default function Providers({ children }: { children: ReactNode }) {
               <span className="grad-bg rounded-xl p-2 text-white">
                 <ShoppingBag size={17} />
               </span>
-              Shopping Cart
+              {text.cartTitle}
               <span className="text-sm font-bold text-gray-400">({count})</span>
             </h3>
             <button
@@ -155,13 +164,13 @@ export default function Providers({ children }: { children: ReactNode }) {
                 <div className="mx-auto w-20 h-20 rounded-full grad-soft grid place-items-center mb-4">
                   <ShoppingBag size={30} className="text-gray-400" />
                 </div>
-                <p className="font-bold text-gray-700">Your cart is empty</p>
-                <p className="text-sm text-gray-400 mt-1">Add some products to get started</p>
+                <p className="font-bold text-gray-700">{text.cartEmpty}</p>
+                <p className="text-sm text-gray-400 mt-1">{text.cartEmptyHint}</p>
                 <button
                   onClick={() => setOpen(false)}
                   className="mt-5 grad-bg text-white text-sm font-bold px-6 py-2.5 rounded-full hover:opacity-90 transition"
                 >
-                  Continue Shopping
+                  {text.continueShopping}
                 </button>
               </div>
             </div>
@@ -187,7 +196,7 @@ export default function Providers({ children }: { children: ReactNode }) {
                         {item.freeDelivery && (
                           <span className="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-1.5 py-[2px] rounded-full">
                             <Truck size={9} />
-                            Free
+                            {text.free}
                           </span>
                         )}
                       </p>
@@ -224,19 +233,19 @@ export default function Providers({ children }: { children: ReactNode }) {
 
               <div className="border-t border-gray-100 px-5 py-4 space-y-3">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500 font-semibold">Subtotal</span>
+                  <span className="text-gray-500 font-semibold">{text.subtotal}</span>
                   <span className="font-display font-extrabold text-lg">{taka(subtotal)}</span>
                 </div>
 
                 {freeDelivery ? (
                   <p className="flex items-center gap-2 text-[12px] font-extrabold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
                     <Truck size={14} />
-                    Free delivery on this order
+                    {text.freeDeliveryOnOrder}
                   </p>
                 ) : (
                   <p className="flex items-center gap-2 text-[11.5px] font-semibold text-gray-400">
                     <Truck size={13} />
-                    Delivery charge is added at checkout
+                    {text.deliveryAtCheckout}
                   </p>
                 )}
                 <Link
@@ -244,7 +253,7 @@ export default function Providers({ children }: { children: ReactNode }) {
                   onClick={() => setOpen(false)}
                   className="grad-bg w-full rounded-2xl py-3.5 text-white font-extrabold text-sm flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.99] transition"
                 >
-                  Proceed to Checkout <ArrowRight size={16} />
+                  {text.proceedToCheckout} <ArrowRight size={16} />
                 </Link>
               </div>
             </>

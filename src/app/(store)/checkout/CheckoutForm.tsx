@@ -16,7 +16,7 @@ import {
   User,
 } from "lucide-react";
 import { taka } from "@/lib/format";
-import { cartShipsFree, useCart, type CartItem } from "@/components/site/Providers";
+import { cartShipsFree, useCart, useText, type CartItem } from "@/components/site/Providers";
 
 type Area = { id: number; name: string; charge: number };
 
@@ -47,6 +47,7 @@ export default function CheckoutForm({
   areas: Area[];
   supportPhone: string;
 }) {
+  const text = useText();
   const router = useRouter();
   const params = useSearchParams();
   const buySlug = params.get("buy");
@@ -113,10 +114,10 @@ export default function CheckoutForm({
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (name.trim().length < 3) e.name = "Please enter your full name";
-    if (!/^01[3-9]\d{8}$/.test(phone.trim())) e.phone = "Enter a valid 11-digit mobile number (01XXXXXXXXX)";
-    if (address.trim().length < 10) e.address = "Please write your full address with area & city";
-    if (!areaId) e.area = "Please select a delivery area";
+    if (name.trim().length < 3) e.name = text.errName;
+    if (!/^01[3-9]\d{8}$/.test(phone.trim())) e.phone = text.errPhone;
+    if (address.trim().length < 10) e.address = text.errAddress;
+    if (!areaId) e.area = text.errArea;
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -165,13 +166,13 @@ export default function CheckoutForm({
           <div className="mx-auto w-20 h-20 rounded-full grad-soft grid place-items-center mb-4">
             <ShoppingBag size={30} className="text-gray-400" />
           </div>
-          <p className="font-extrabold text-gray-800">Nothing to checkout</p>
-          <p className="text-sm text-gray-400 mt-1">Add some products to your cart first</p>
+          <p className="font-extrabold text-gray-800">{text.emptyCartTitle}</p>
+          <p className="text-sm text-gray-400 mt-1">{text.emptyCartHint}</p>
           <Link
             href="/"
             className="inline-block mt-6 grad-bg text-white text-sm font-extrabold px-7 py-3 rounded-full hover:opacity-90 transition"
           >
-            Continue Shopping
+            {text.continueShopping}
           </Link>
         </div>
       </div>
@@ -181,10 +182,10 @@ export default function CheckoutForm({
   return (
     <div className="max-w-6xl mx-auto px-3 lg:px-6 py-6 md:py-10 pb-28 lg:pb-10">
       <h1 className="font-display text-[22px] md:text-3xl font-extrabold tracking-tight text-center">
-        <span className="grad-text">Checkout</span>
+        <span className="grad-text">{text.checkoutTitle}</span>
       </h1>
       <p className="text-center text-[12px] md:text-sm text-gray-400 font-semibold mt-1.5 mb-7 md:mb-9">
-        Fill up the form below — we will call to confirm your order
+        {text.checkoutSubtitle}
       </p>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 md:gap-6 items-start">
@@ -194,20 +195,20 @@ export default function CheckoutForm({
             <span className="grad-bg text-white rounded-xl p-2">
               <ClipboardList size={15} />
             </span>
-            Shipping Information
+            {text.shippingInfo}
           </h2>
 
           <div className="space-y-4">
-            <Field label="Full Name" icon={User} error={errors.name}>
+            <Field label={text.fullName} icon={User} error={errors.name}>
               <input
                 className="field"
-                placeholder="e.g. Rahim Uddin"
+                placeholder={text.fullNamePlaceholder}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
             </Field>
 
-            <Field label="Mobile Number" icon={Phone} error={errors.phone}>
+            <Field label={text.mobileNumber} icon={Phone} error={errors.phone}>
               <input
                 className="field"
                 placeholder="01XXXXXXXXX"
@@ -218,7 +219,7 @@ export default function CheckoutForm({
               />
             </Field>
 
-            <Field label="Delivery Area" icon={Truck} error={errors.area}>
+            <Field label={text.deliveryArea} icon={Truck} error={errors.area}>
               <select
                 className="field appearance-none cursor-pointer pr-10"
                 value={areaId ?? ""}
@@ -236,14 +237,14 @@ export default function CheckoutForm({
             {shipsFree && (
               <p className="-mt-1 flex items-center gap-2 text-[12px] font-extrabold text-emerald-600">
                 <Truck size={14} />
-                Every product in this order ships free — no delivery charge.
+                {text.freeShipNote}
               </p>
             )}
 
-            <Field label="Full Address" icon={MapPin} error={errors.address}>
+            <Field label={text.fullAddress} icon={MapPin} error={errors.address}>
               <textarea
                 className="field min-h-[96px] resize-none"
-                placeholder="House, Road, Area, City — e.g. House 12, Road 5, Dhanmondi, Dhaka"
+                placeholder={text.addressPlaceholder}
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
               />
@@ -258,7 +259,7 @@ export default function CheckoutForm({
 
           <div className="mt-5 flex items-center gap-2.5 text-[12px] text-gray-400 font-semibold bg-gray-50 rounded-xl px-4 py-3">
             <Lock size={13} className="shrink-0" />
-            Payment: Cash on Delivery. Hotline {supportPhone}
+            {text.cashOnDelivery} · {text.hotline} {supportPhone}
           </div>
         </form>
 
@@ -268,7 +269,7 @@ export default function CheckoutForm({
             <span className="grad-bg text-white rounded-xl p-2">
               <ShoppingBag size={15} />
             </span>
-            Order Summary
+            {text.orderSummary}
           </h2>
 
           <div className="max-h-[240px] overflow-y-auto no-scrollbar space-y-2.5 pr-1">
@@ -292,15 +293,15 @@ export default function CheckoutForm({
 
           <div className="mt-4 space-y-2 text-[13px] font-semibold text-gray-500">
             <div className="flex justify-between">
-              <span>Subtotal</span>
+              <span>{text.subtotal}</span>
               <span className="text-gray-800">{taka(subtotal)}</span>
             </div>
             <div className="flex justify-between gap-3">
-              <span className="min-w-0 truncate">Delivery ({area?.name ?? "—"})</span>
+              <span className="min-w-0 truncate">{text.deliveryCharge} ({area?.name ?? "—"})</span>
               {shipsFree ? (
                 <span className="shrink-0 flex items-center gap-1.5">
                   <span className="text-gray-400 line-through">{area ? taka(area.charge) : ""}</span>
-                  <span className="text-emerald-600 font-extrabold">FREE</span>
+                  <span className="text-emerald-600 font-extrabold">{text.free}</span>
                 </span>
               ) : (
                 <span className="text-gray-800 shrink-0">{area ? taka(area.charge) : "—"}</span>
@@ -309,11 +310,11 @@ export default function CheckoutForm({
             {shipsFree && (
               <p className="flex items-center gap-2 text-[12px] font-extrabold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
                 <Truck size={14} />
-                Free delivery applied to this order
+                {text.freeDeliveryApplied}
               </p>
             )}
             <div className="border-t border-dashed border-gray-200 pt-2.5 flex justify-between items-center">
-              <span className="text-gray-800 font-extrabold">Total</span>
+              <span className="text-gray-800 font-extrabold">{text.total}</span>
               <span className="grad-text font-display font-extrabold text-xl">{taka(total)}</span>
             </div>
           </div>
@@ -326,7 +327,7 @@ export default function CheckoutForm({
             className="hidden lg:flex mt-5 w-full grad-bg text-white rounded-2xl py-3.5 text-sm font-extrabold items-center justify-center gap-2 hover:opacity-90 active:scale-[0.99] transition disabled:opacity-70"
           >
             {submitting ? <Loader2 size={16} className="animate-spin" /> : <Lock size={15} />}
-            {submitting ? "Placing Order…" : "Place Order"}
+            {submitting ? text.placingOrder : text.placeOrder}
           </button>
         </aside>
       </div>
@@ -335,10 +336,10 @@ export default function CheckoutForm({
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/97 backdrop-blur border-t border-gray-100 shadow-[0_-8px_30px_rgba(17,18,28,0.1)] px-4 py-3">
         <div className="flex items-center justify-between gap-3 text-[11px] font-bold text-gray-400 mb-1.5">
           <span className="min-w-0 truncate">
-            {items.reduce((a, i) => a + i.qty, 0)} items • {area?.name ?? "Select area"}
+            {items.reduce((a, i) => a + i.qty, 0)} {text.itemsWord} • {area?.name ?? text.selectArea}
           </span>
           <span className="shrink-0 whitespace-nowrap">
-            Total payable: <span className="grad-text font-display font-extrabold text-base">{taka(total)}</span>
+            {text.total}: <span className="grad-text font-display font-extrabold text-base">{taka(total)}</span>
           </span>
         </div>
         <button
@@ -348,7 +349,7 @@ export default function CheckoutForm({
           className="w-full grad-bg text-white rounded-2xl py-3 text-sm font-extrabold flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.99] transition disabled:opacity-70"
         >
           {submitting ? <Loader2 size={16} className="animate-spin" /> : <Lock size={15} />}
-          {submitting ? "Placing Order…" : "Place Order"}
+          {submitting ? text.placingOrder : text.placeOrder}
         </button>
       </div>
     </div>

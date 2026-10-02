@@ -4,7 +4,7 @@ import {
   getCategories,
   getHomeCategories,
   getProducts,
-  getSettings,
+  getSiteText,
 } from "@/lib/data";
 import HeroSlider from "@/components/home/HeroSlider";
 import CategorySlider from "@/components/home/CategorySlider";
@@ -12,21 +12,21 @@ import ProductsBlock from "@/components/home/ProductsBlock";
 import SectionTitle from "@/components/site/SectionTitle";
 import Reveal from "@/components/site/Reveal";
 
-const perks = [
-  { icon: Truck, title: "Fast Delivery", sub: "All over Bangladesh" },
-  { icon: ShieldCheck, title: "100% Authentic", sub: "Quality checked" },
-  { icon: RefreshCcw, title: "Easy Return", sub: "7 days replacement" },
-  { icon: Headphones, title: "Support", sub: "9 AM – 11 PM everyday" },
-];
-
 export default async function HomePage() {
-  const [settings, banners, categories, homeCats, all] = await Promise.all([
-    getSettings(),
+  const [text, banners, categories, homeCats, all] = await Promise.all([
+    getSiteText(),
     getBanners(),
     getCategories(),
     getHomeCategories(),
     getProducts({ limit: 12 }),
   ]);
+
+  const perks = [
+    { icon: Truck, title: text.fastDeliveryTitle, sub: text.fastDeliverySub },
+    { icon: ShieldCheck, title: text.authenticTitle, sub: text.genuineSub },
+    { icon: RefreshCcw, title: text.returnTitle, sub: text.returnSub },
+    { icon: Headphones, title: text.supportTitle, sub: text.supportSub },
+  ];
 
   const catSections = await Promise.all(
     homeCats.map(async (c) => ({
@@ -67,9 +67,9 @@ export default async function HomePage() {
           <div className="max-w-7xl mx-auto px-3 lg:px-6">
             <Reveal>
               <SectionTitle
-                eyebrow="Top Categories"
-                title={settings.categoryTitle}
-                subtitle={settings.categorySubtitle}
+                eyebrow={text.categoryEyebrow}
+                title={text.categoryTitle}
+                subtitle={text.categorySubtitle}
               />
             </Reveal>
             <Reveal delay={120}>
@@ -85,14 +85,13 @@ export default async function HomePage() {
       <section className="mt-10 md:mt-16 py-10 md:py-14 grad-soft">
         <div className="max-w-7xl mx-auto px-3 lg:px-6">
           <Reveal>
-            <SectionTitle eyebrow="Featured Collection" title={settings.allProductsTitle} />
+            <SectionTitle eyebrow={text.featuredEyebrow} title={text.allProductsTitle} />
           </Reveal>
           <Reveal delay={100}>
             <ProductsBlock
               initialItems={all.items}
               initialHasMore={all.hasMore}
               categorySlug="all"
-              buyNowText={settings.buyNowText}
             />
           </Reveal>
         </div>
@@ -107,14 +106,13 @@ export default async function HomePage() {
           >
             <div className="max-w-7xl mx-auto px-3 lg:px-6">
               <Reveal>
-                <SectionTitle eyebrow="Category" title={category.name} />
+                <SectionTitle eyebrow={text.categorySectionEyebrow} title={category.name} />
               </Reveal>
               <Reveal delay={100}>
                 <ProductsBlock
                   initialItems={result.items}
                   initialHasMore={result.hasMore}
                   categorySlug={category.slug}
-                  buyNowText={settings.buyNowText}
                 />
               </Reveal>
             </div>
