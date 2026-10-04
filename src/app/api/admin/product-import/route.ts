@@ -20,10 +20,12 @@ function productsFrom(html: string) {
   while ((match = linkRe.exec(html))) {
     const slug = match[1].split(/[?#"']/)[0];
     const chunk = match[0];
-    const name = text(chunk, "og:title") || decode((/<h[1-4][^>]*>([^<]+)</i.exec(chunk)?.[1] || "").trim());
-    const image = text(chunk, "og:image");
-    const price = Number((/price["']?\s*[:=]\s*["']?([\d.]+)/i.exec(chunk)?.[1] || "").replace(/,/g, ""));
-    if (slug && name && !found.has(slug)) found.set(slug, { name, slug, description: "", images: image ? [abs(image)] : [], regularPrice: price || 0, sellPrice: price || null });
+    const name = text(chunk, "og:title") || decode((/alt=["']([^"']+)["']/i.exec(chunk)?.[1] || /<h[1-4][^>]*>([^<]+)</i.exec(chunk)?.[1] || "").trim());
+    const image = text(chunk, "og:image") || decode(/(?:src|data-src)=["']([^"']+)["']/i.exec(chunk)?.[1] || "");
+    const prices = [...chunk.matchAll(/৳\s*([\d,]+)/g)].map((m) => Number(m[1].replace(/,/g, "")));
+    const price = prices[0] || Number((/price["']?\s*[:=]\s*["']?([\d.]+)/i.exec(chunk)?.[1] || "").replace(/,/g, ""));
+    const regular = prices[1] || price;
+    if (slug && name && !found.has(slug)) found.set(slug, { name, slug, description: "", images: image ? [abs(image)] : [], regularPrice: regular || 0, sellPrice: price || null });
   }
   return [...found.values()];
 }
