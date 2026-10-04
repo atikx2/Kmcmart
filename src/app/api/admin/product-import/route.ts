@@ -6,7 +6,7 @@ import { asc } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
-const SOURCE = "https://htbazar.com";
+const SOURCE = "http://kmcbazar.com";
 const abs = (value: string) => value.startsWith("http") ? value : `${SOURCE}${value}`;
 function decode(value: string) { return value.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">"); }
 function text(html: string, key: string) {
@@ -15,7 +15,7 @@ function text(html: string, key: string) {
 }
 function productsFrom(html: string) {
   const found = new Map<string, { name: string; slug: string; description: string; images: string[]; regularPrice: number; sellPrice: number | null }>();
-  const linkRe = /href=["'](?:https:\/\/htbazar\.com)?\/products\/([^"']+)["'][\s\S]{0,1800}?/gi;
+  const linkRe = /href=["'](?:https?:\/\/kmcbazar\.com)?\/product\/([^"']+)["'][\s\S]{0,1800}?/gi;
   let match: RegExpExecArray | null;
   while ((match = linkRe.exec(html))) {
     const slug = match[1].split(/[?#"']/)[0];
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
     if (mode === "categories") return Response.json({ categories: categoryRows });
     if (!value) return Response.json({ error: "Enter a product or category URL" }, { status: 400 });
     const url = new URL(value.startsWith("http") ? value : `${SOURCE}${value}`);
-    if (url.hostname !== "htbazar.com" && url.hostname !== "www.htbazar.com") return Response.json({ error: "Only htbazar.com URLs are supported" }, { status: 400 });
+    if (url.hostname !== "kmcbazar.com" && url.hostname !== "www.kmcbazar.com") return Response.json({ error: "Only kmcbazar.com URLs are supported" }, { status: 400 });
     const response = await fetch(url.toString(), { headers: { "User-Agent": "Kmcmart product importer" }, cache: "no-store" });
     if (!response.ok) throw new Error(`Source returned ${response.status}`);
     const html = await response.text();
