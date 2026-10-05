@@ -5,6 +5,7 @@ import { getSettings } from "@/lib/data";
 import { isLang } from "@/lib/i18n";
 import { getActiveTrackingTags } from "@/lib/admin-tracking";
 import TrackingScripts, { TrackingNoScript, verificationTokens } from "@/components/site/TrackingScripts";
+import NavigationLoader from "@/components/site/NavigationLoader";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +62,7 @@ export default async function RootLayout({
         <TrackingNoScript tags={tags} />
         <style>{`:root{--g1:${settings.colorFrom};--g2:${settings.colorTo};}`}</style>
         {children}
+        <NavigationLoader />
         <TrackingScripts tags={tags} />
       </body>
     </html>
