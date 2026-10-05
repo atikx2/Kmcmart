@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   ChartColumn,
+  Download,
   ChevronDown,
   Images,
   KeyRound,
@@ -60,6 +61,7 @@ function pageTitle(pathname: string): string {
   if (pathname.startsWith("/admin/orders")) return "Order Management";
   if (pathname === "/admin/products/new") return "Add Product";
   if (/^\/admin\/products\/.+\/edit$/.test(pathname)) return "Edit Product";
+  if (pathname.startsWith("/admin/image-migration")) return "Image Migration";
   if (pathname.startsWith("/admin/products")) return "Product Management";
   if (pathname.startsWith("/admin/categories")) return "Category Management";
   if (pathname.startsWith("/admin/banners")) return "Banner Management";
@@ -80,6 +82,7 @@ const NAV: NavEntry[] = [
   { section: "Manage" },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart, perm: "orders" },
   { href: "/admin/products", label: "Products", icon: Package, perm: "products" },
+  { href: "/admin/image-migration", label: "Image Migration", icon: Download, perm: "products" },
   { href: "/admin/categories", label: "Categories", icon: Shapes, perm: "categories" },
   { href: "/admin/banners", label: "Banners", icon: Images, perm: "banners" },
   { href: "/admin/menus", label: "Menus", icon: List, perm: "menus" },
