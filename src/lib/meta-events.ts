@@ -1,0 +1,2 @@
+"use client";
+export function metaEvent(name:string, params:Record<string,unknown>={}, eventId=`${name}-${Date.now()}-${Math.random().toString(36).slice(2)}`){const w=window as Window & {fbq?: (...args:unknown[])=>void};w.fbq?.('track',name,params,{eventID:eventId});void fetch('/api/meta/event',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name,params,eventId})}).catch(()=>{});return eventId;}

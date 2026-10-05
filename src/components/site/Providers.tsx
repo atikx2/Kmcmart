@@ -12,6 +12,7 @@ import {
 } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { metaEvent } from "@/lib/meta-events";
 import { Minus, Plus, ShoppingBag, Trash2, Truck, X, ArrowRight } from "lucide-react";
 import type { ProductLite } from "@/db/schema";
 import { effectivePrice, taka } from "@/lib/format";
@@ -94,6 +95,7 @@ export default function Providers({ text, children }: { text: SiteText; children
       }
       return [...prev, { id: p.id, slug: p.slug, name: p.name, image: p.image, price, qty, freeDelivery: p.freeDelivery }];
     });
+    metaEvent("AddToCart", { content_ids: [String(p.id)], content_name: p.name, content_type: "product", value: price * qty, currency: "BDT", num_items: qty });
     setOpen(true);
   }, []);
 
