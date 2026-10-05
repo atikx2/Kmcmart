@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 async function compressData(src: string) {
-  const match = /^data:[^;]+;base64,(.+)$/s.exec(src);
+  const match = /^data:[^;]+;base64,([\s\S]+)$/.exec(src);
   if (!match) throw new Error("Invalid local image");
   const bytes = await sharp(Buffer.from(match[1], "base64")).rotate().resize({ width: 1200, height: 1200, fit: "inside", withoutEnlargement: true }).webp({ quality: 78 }).toBuffer();
   return `data:image/webp;base64,${bytes.toString("base64")}`;
