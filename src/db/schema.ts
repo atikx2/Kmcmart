@@ -19,7 +19,7 @@ export type OrderItem = {
 
 export const settings = pgTable("settings", {
   id: serial("id").primaryKey(),
-  siteName: text("site_name").notNull().default("Kmcbazar"),
+  siteName: text("site_name").notNull().default("KmcBazar"),
   logoHeader: text("logo_header").notNull().default("/assets/logo-header.svg"),
   logoFooter: text("logo_footer").notNull().default("/assets/logo-footer.svg"),
   slogan: text("slogan")

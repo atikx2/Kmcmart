@@ -58,7 +58,7 @@ async function main() {
   /* ---------------- settings ---------------- */
   await db.insert(settings).values({
     id: 1,
-    siteName: "Kmcbazar",
+    siteName: "KmcBazar",
     logoHeader: "/assets/logo-header.svg",
     logoFooter: "/assets/logo-footer.svg",
     slogan: "Smart shopping, happy living — everything you need at your door.",
@@ -113,7 +113,7 @@ async function main() {
   const cid = (slug: string) => cats.find((c) => c.slug === slug)!.id;
 
   const desc = (n: string) =>
-    `${n} — 100% authentic product with brand warranty and quality checked by Kmcbazar. Cash on delivery available all over Bangladesh with easy 7-day replacement guarantee.`;
+    `${n} — 100% authentic product with brand warranty and quality checked by KmcBazar. Cash on delivery available all over Bangladesh with easy 7-day replacement guarantee.`;
 
   type P = [string, string, string, number, number | null, number];
   const rows: P[] = [

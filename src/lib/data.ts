@@ -31,7 +31,7 @@ import { dbImageUrl } from "@/lib/format";
  */
 const DEFAULT_SETTINGS: Settings = {
   id: 1,
-  siteName: "Kmcbazar",
+  siteName: "KmcBazar",
   logoHeader: "/assets/logo-header.svg",
   logoFooter: "/assets/logo-footer.svg",
   slogan: "Smart shopping, happy living — everything you need at your door.",
