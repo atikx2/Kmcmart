@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import sharp from "sharp";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { products } from "@/db/schema";
@@ -11,9 +12,11 @@ async function download(url: string) {
   const response = await fetch(url, { headers: { "User-Agent": "Kmcmart image migration" }, cache: "no-store" });
   if (!response.ok) throw new Error(`Image returned ${response.status}`);
   const type = response.headers.get("content-type")?.split(";")[0] || "image/jpeg";
-  const bytes = Buffer.from(await response.arrayBuffer());
-  if (!type.startsWith("image/") || bytes.length > 4_500_000) throw new Error("Image is invalid or too large");
-  return `data:${type};base64,${bytes.toString("base64")}`;
+  const original = Buffer.from(await response.arrayBuffer());
+  if (!type.startsWith("image/") || original.length > 12_000_000) throw new Error("Image is invalid or too large");
+  // Keep database payloads small: max 1200px edge, WebP quality 78.
+  const bytes = await sharp(original).rotate().resize({ width: 1200, height: 1200, fit: "inside", withoutEnlargement: true }).webp({ quality: 78 }).toBuffer();
+  return `data:image/webp;base64,${bytes.toString("base64")}`;
 }
 
 export async function GET() {
