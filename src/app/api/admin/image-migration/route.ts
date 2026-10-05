@@ -48,10 +48,10 @@ export async function POST(req: NextRequest) {
   const failed: string[] = [];
   for (const src of row.images) {
     if (mode === "recompress" && src.startsWith("data:")) {
-      try { images.push(await compressData(src)); } catch { failed.push(src); }
+      try { images.push(await compressData(src)); } catch { failed.push(src); images.push(src); }
     } else if (!/^https?:\/\//i.test(src)) { images.push(src); }
     else {
-      try { images.push(await download(src)); } catch { failed.push(src); }
+      try { images.push(await download(src)); } catch { failed.push(src); images.push(src); }
     }
   }
   if (failed.length === row.images.filter((x) => /^https?:\/\//i.test(x)).length) return Response.json({ error: "Could not download any image", failed: failed.length }, { status: 502 });
