@@ -15,6 +15,8 @@ import { listOrderStatuses } from "@/lib/admin-order-statuses";
 import CourierClient from "./CourierClient";
 import FraudClient from "./FraudClient";
 import TrackingClient from "./TrackingClient";
+import MetaCapiClient from "./MetaCapiClient";
+import { listMetaPixels } from "@/lib/meta-capi";
 
 export const metadata: Metadata = { title: "API · Admin" };
 export const dynamic = "force-dynamic";
@@ -70,7 +72,7 @@ const SOON: Integration[] = [
 export default async function AdminApiPage() {
   await requirePermission("api");
 
-  const [{ row, ready }, statuses, summary, pendingParcels, fraud, fraudStats, tracking] = await Promise.all([
+  const [{ row, ready }, statuses, summary, pendingParcels, fraud, fraudStats, tracking, metaPixels] = await Promise.all([
     loadCourierConfig(),
     listOrderStatuses(),
     courierSummary(),
@@ -78,6 +80,7 @@ export default async function AdminApiPage() {
     loadFraudConfig(),
     fraudSummary(),
     listTrackingTags(),
+    listMetaPixels(),
   ]);
 
   return (
@@ -118,6 +121,7 @@ export default async function AdminApiPage() {
       <FraudClient initial={toPublicFraudConfig(fraud.row)} ready={fraud.ready} summary={fraudStats} />
 
       <TrackingClient initial={tracking.items} ready={tracking.ready} />
+      <MetaCapiClient initial={metaPixels} />
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
         {SOON.map((it) => {
