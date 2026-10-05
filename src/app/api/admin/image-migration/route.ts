@@ -54,7 +54,8 @@ export async function POST(req: NextRequest) {
       try { images.push(await download(src)); } catch { failed.push(src); images.push(src); }
     }
   }
-  if (failed.length === row.images.filter((x) => /^https?:\/\//i.test(x)).length) return Response.json({ error: "Could not download any image", failed: failed.length }, { status: 502 });
+  const candidates = row.images.filter((src) => mode === "recompress" ? src.startsWith("data:") : /^https?:\/\//i.test(src));
+  if (candidates.length > 0 && failed.length === candidates.length) return Response.json({ error: "Could not process any image", failed: failed.length }, { status: 502 });
   await db.update(products).set({ images }).where(eq(products.id, productId));
   return Response.json({ ok: true, id: productId, downloaded: images.length - failed.length, failed: failed.length });
 }
