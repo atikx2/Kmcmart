@@ -19,14 +19,14 @@ export type OrderItem = {
 
 export const settings = pgTable("settings", {
   id: serial("id").primaryKey(),
-  siteName: text("site_name").notNull().default("Kmcmartbd"),
+  siteName: text("site_name").notNull().default("Kmcbazar"),
   logoHeader: text("logo_header").notNull().default("/assets/logo-header.svg"),
   logoFooter: text("logo_footer").notNull().default("/assets/logo-footer.svg"),
   slogan: text("slogan")
     .notNull()
     .default("Smart shopping, happy living — everything you need at your door."),
   phone: text("phone").notNull().default("+880 1700-112233"),
-  email: text("email").notNull().default("support@kmcmartbd.com"),
+  email: text("email").notNull().default("support@kmcbazar.com"),
   address: text("address").notNull().default("Dhaka, Bangladesh"),
   facebook: text("facebook").notNull().default("#"),
   instagram: text("instagram").notNull().default("#"),

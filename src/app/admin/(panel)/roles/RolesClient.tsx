@@ -175,7 +175,7 @@ function AdminModal({
                   type="email"
                   value={v.email}
                   onChange={(e) => setV((p) => ({ ...p, email: e.target.value }))}
-                  placeholder="admin@kmcmartbd.com"
+                  placeholder="admin@kmcbazar.com"
                   className="field font-semibold"
                 />
               </span>

@@ -31,12 +31,12 @@ import { dbImageUrl } from "@/lib/format";
  */
 const DEFAULT_SETTINGS: Settings = {
   id: 1,
-  siteName: "Kmcmartbd",
+  siteName: "Kmcbazar",
   logoHeader: "/assets/logo-header.svg",
   logoFooter: "/assets/logo-footer.svg",
   slogan: "Smart shopping, happy living — everything you need at your door.",
   phone: "+880 1700-112233",
-  email: "support@kmcmartbd.com",
+  email: "support@kmcbazar.com",
   address: "Dhaka, Bangladesh",
   facebook: "#",
   instagram: "#",

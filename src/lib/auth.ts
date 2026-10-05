@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { customers, type Customer } from "@/db/schema";
 
-const SECRET = process.env.AUTH_SECRET || "kmcmartbd-dev-secret-change-in-production";
+const SECRET = process.env.AUTH_SECRET || "kmcbazarbd-dev-secret-change-in-production";
 const COOKIE_NAME = "kmc_session";
 const MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
