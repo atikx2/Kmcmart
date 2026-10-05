@@ -232,6 +232,20 @@ export const trackingTags = pgTable("tracking_tags", {
 
 export type TrackingTag = typeof trackingTags.$inferSelect;
 
+export const metaPixels = pgTable("meta_pixels", {
+  id: serial("id").primaryKey(),
+  label: text("label").notNull().default(""),
+  pixelId: text("pixel_id").notNull().unique(),
+  accessToken: text("access_token").notNull().default(""),
+  testEventCode: text("test_event_code").notNull().default(""),
+  isActive: boolean("is_active").notNull().default(true),
+  events: jsonb("events").$type<string[]>().notNull().default(["PageView", "ViewContent", "AddToCart", "InitiateCheckout", "Purchase"]),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type MetaPixel = typeof metaPixels.$inferSelect;
+
 export const admins = pgTable("admins", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().default(""),
