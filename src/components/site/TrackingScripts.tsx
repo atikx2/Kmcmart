@@ -23,7 +23,9 @@ export default function TrackingScripts({ tags, metaPixels = [] }: { tags: Track
 
   const gtm = ids("gtm");
   const gtag = [...ids("ga4"), ...ids("gads")];
-  const meta = [...ids("meta"), ...metaPixels.filter((p) => p.isActive).map((p) => p.pixelId)].filter((id, i, all) => all.indexOf(id) === i);
+  // Meta IDs are managed only in the Meta Pixel & CAPI tab. Keeping the legacy
+  // generic tag out prevents the same pixel firing twice.
+  const meta = metaPixels.filter((p) => p.isActive).map((p) => p.pixelId).filter((id, i, all) => all.indexOf(id) === i);
 
   return (
     <>
