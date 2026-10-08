@@ -1,0 +1,10 @@
+import { and, asc, eq } from "drizzle-orm";
+import { db } from "@/db";
+import { metaPixels } from "@/db/schema";
+import { encryptSecret, decryptSecret } from "@/lib/courier-crypto";
+
+export const META_EVENTS = ["PageView", "ViewContent", "AddToCart", "InitiateCheckout", "Purchase"] as const;
+export type MetaEvent = typeof META_EVENTS[number];
+export async function listMetaPixels() { const rows=await db.select().from(metaPixels).orderBy(asc(metaPixels.id)); return rows.map(r=>({...r,accessToken: r.accessToken ? "••••••••" : ""})); }
+export async function saveMetaPixel(input:{id?:number;label:string;pixelId:string;accessToken?:string;testEventCode?:string;isActive?:boolean;events?:string[]}) { const events=(input.events||[]).filter((x):x is MetaEvent=>(META_EVENTS as readonly string[]).includes(x)); const values={label:input.label.trim(),pixelId:input.pixelId.trim(),testEventCode:(input.testEventCode||"").trim(),isActive:input.isActive!==false,events}; if(input.id){const patch:any={...values,updatedAt:new Date()};if(input.accessToken?.trim())patch.accessToken=encryptSecret(input.accessToken);const [r]=await db.update(metaPixels).set(patch).where(eq(metaPixels.id,input.id)).returning();return r;}const [r]=await db.insert(metaPixels).values({...values,accessToken:encryptSecret(input.accessToken||"")}).returning();return r; }
+export async function sendMetaEvent(eventName:MetaEvent,eventId:string,data:Record<string,unknown>){const rows=await db.select().from(metaPixels).where(and(eq(metaPixels.isActive,true)));await Promise.allSettled(rows.filter(r=>r.events.includes(eventName)).map(async r=>{const token=decryptSecret(r.accessToken);if(!token)return;const payload={data:[{event_name:eventName,event_time:Math.floor(Date.now()/1000),event_id:eventId,action_source:"website",user_data:data.user_data||{},custom_data:data.custom_data||{}}],...(r.testEventCode?{test_event_code:r.testEventCode}:{})};await fetch(`https://graph.facebook.com/v20.0/${r.pixelId}/events?access_token=${encodeURIComponent(token)}`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)}); }));}

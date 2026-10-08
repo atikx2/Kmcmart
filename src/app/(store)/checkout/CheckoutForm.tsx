@@ -16,6 +16,7 @@ import {
   User,
 } from "lucide-react";
 import { taka } from "@/lib/format";
+import { metaEvent } from "@/lib/meta-events";
 import { cartShipsFree, useCart, useText, type CartItem } from "@/components/site/Providers";
 
 type Area = { id: number; name: string; charge: number };
@@ -128,6 +129,7 @@ export default function CheckoutForm({
     if (!validate()) return;
     setSubmitting(true);
     setServerError("");
+    metaEvent("InitiateCheckout", { content_ids: items.map(i => String(i.id)), value: total, currency: "BDT", num_items: items.reduce((n,i)=>n+i.qty,0) });
     try {
       const res = await fetch("/api/orders", {
         method: "POST",
@@ -142,6 +144,7 @@ export default function CheckoutForm({
       });
       const data = await res.json();
       if (!res.ok || !data.code) throw new Error(data.error || "Order failed");
+      metaEvent("Purchase", { content_ids: items.map(i => String(i.id)), value: total, currency: "BDT", num_items: items.reduce((n,i)=>n+i.qty,0), order_id: data.code });
       if (!buySlug) cart.clearCart();
       router.replace(`/complete-order/${data.code}`);
     } catch (err) {

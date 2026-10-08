@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
   return new Response(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="kmcmart-report-${picked.key}d-${stamp}.csv"`,
+      "Content-Disposition": `attachment; filename="kmcbazar-report-${picked.key}d-${stamp}.csv"`,
       "Cache-Control": "no-store",
     },
   });

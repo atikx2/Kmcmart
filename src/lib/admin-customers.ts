@@ -123,13 +123,9 @@ export async function listAdminCustomers(opts: {
     .where(where)
     .groupBy(orders.phone);
 
-  const [rows, totalRows, accounts, summaryRows] = await Promise.all([
-    grouped.orderBy(desc(sql`max(${orders.createdAt})`)).limit(limit).offset(offset),
-    db
-      .select({ n: sql<number>`count(distinct ${orders.phone})::int` })
-      .from(orders)
-      .where(where),
-    db.select({ phone: customers.phone }).from(customers),
+  const [orderRows, accounts, summaryRows] = await Promise.all([
+    grouped.orderBy(desc(sql`max(${orders.createdAt})`)),
+    db.select({ phone: customers.phone, name: customers.name, address: customers.address, createdAt: customers.createdAt }).from(customers),
     db
       .select({
         customers: sql<number>`count(distinct ${orders.phone})::int`,
@@ -152,22 +148,12 @@ export async function listAdminCustomers(opts: {
         .as("repeat_customers")
     );
 
-  const items: AdminCustomerRow[] = rows.map((r) => ({
-    phone: r.phone,
-    name: r.name,
-    address: r.address,
-    orderCount: r.orderCount,
-    delivered: r.delivered,
-    pending: r.pending,
-    cancelled: r.cancelled,
-    spent: r.spent,
-    lastOrderAt: DATE_FMT.format(new Date(r.lastOrderAt)),
-    firstOrderAt: DATE_FMT.format(new Date(r.firstOrderAt)),
-    hasAccount: accountPhones.has(r.phone),
-    fraud: fraudScore(r.delivered, r.cancelled, r.orderCount),
-  }));
-
-  const total = totalRows[0]?.n ?? 0;
+  const byPhone = new Map<string, AdminCustomerRow>();
+  for (const r of orderRows) byPhone.set(r.phone, { phone:r.phone, name:r.name, address:r.address, orderCount:r.orderCount, delivered:r.delivered, pending:r.pending, cancelled:r.cancelled, spent:r.spent, lastOrderAt:DATE_FMT.format(new Date(r.lastOrderAt)), firstOrderAt:DATE_FMT.format(new Date(r.firstOrderAt)), hasAccount:accountPhones.has(r.phone), fraud:fraudScore(r.delivered,r.cancelled,r.orderCount) });
+  for (const c of accounts) if (!byPhone.has(c.phone)) byPhone.set(c.phone, { phone:c.phone, name:c.name, address:c.address || "", orderCount:0, delivered:0, pending:0, cancelled:0, spent:0, lastOrderAt:"—", firstOrderAt:c.createdAt ? DATE_FMT.format(new Date(c.createdAt)) : "—", hasAccount:true, fraud:fraudScore(0,0,0) });
+  const allItems = [...byPhone.values()].filter(c => !q || c.name.toLowerCase().includes(q.toLowerCase()) || c.phone.includes(q) || c.address.toLowerCase().includes(q.toLowerCase())).sort((a,b)=>a.name.localeCompare(b.name));
+  const items = allItems.slice(offset, offset + limit);
+  const total = allItems.length;
 
   return {
     items,

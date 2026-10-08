@@ -16,7 +16,7 @@ import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "node:
 
 const PREFIX = "v1";
 const SALT = "kmc-courier-v1";
-const FALLBACK = "kmcmartbd-dev-secret";
+const FALLBACK = "kmcbazarbd-dev-secret";
 
 const cache = new Map<string, Buffer>();
 

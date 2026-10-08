@@ -103,6 +103,7 @@ export default function ProductsClient({
   const [rowBusy, setRowBusy] = useState<number | null>(null);
   const [toDelete, setToDelete] = useState<AdminProductRow | null>(null);
   const [working, setWorking] = useState(false);
+  const [selected, setSelected] = useState<number[]>([]);
 
   const firstRender = useRef(true);
 
@@ -207,6 +208,10 @@ export default function ProductsClient({
     }
   };
 
+  const bulk = async (action: "activate" | "hide" | "delete") => {
+    if (!selected.length || (action === "delete" && !confirm(`Delete ${selected.length} selected product(s)?`))) return;
+    setWorking(true); try { const res = await fetch("/api/admin/products/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: selected, action }) }); const json = await res.json(); if (!res.ok) throw new Error(json.error); showToast("ok", `${json.count} product(s) updated`); setSelected([]); await refresh(); router.refresh(); } catch (e) { showToast("err", e instanceof Error ? e.message : "Bulk action failed"); } finally { setWorking(false); }
+  };
   const totalPages = Math.max(1, Math.ceil(data.total / limit));
   const from = data.total === 0 ? 0 : page * limit + 1;
   const to = Math.min(data.total, page * limit + data.items.length);
@@ -326,6 +331,7 @@ export default function ProductsClient({
           </div>
         </div>
 
+        {selected.length > 0 && <div className="mx-4 md:mx-6 my-3 flex flex-wrap items-center gap-2 rounded-2xl bg-[#fff7f3] border border-orange-100 px-3 py-2.5"><span className="text-xs font-extrabold text-gray-700 mr-auto">{selected.length} selected</span><button onClick={()=>bulk("activate")} disabled={working} className="rounded-xl bg-emerald-500 text-white px-3 py-2 text-xs font-extrabold">Show</button><button onClick={()=>bulk("hide")} disabled={working} className="rounded-xl bg-gray-700 text-white px-3 py-2 text-xs font-extrabold">Hide</button><button onClick={()=>bulk("delete")} disabled={working} className="rounded-xl bg-rose-500 text-white px-3 py-2 text-xs font-extrabold">Delete</button><button onClick={()=>setSelected([])} className="rounded-xl border border-gray-200 px-3 py-2 text-xs font-extrabold">Clear</button></div>}
         {data.items.length === 0 ? (
           <div className="px-6 py-16 text-center">
             <span className="mx-auto w-20 h-20 rounded-full grad-soft grid place-items-center mb-4">
@@ -369,7 +375,7 @@ export default function ProductsClient({
                 <table className="w-full min-w-[980px] text-sm">
                   <thead>
                     <tr className="text-left bg-gradient-to-r from-[#fff8f3] via-[#fff6f8] to-[#fff4f8] border-y border-gray-100">
-                      <Th icon={Hash} label="SL" className="w-[64px]" />
+                      <th className="px-3 py-3.5 w-[42px]"><input type="checkbox" checked={data.items.length>0 && data.items.every(p=>selected.includes(p.id))} onChange={e=>setSelected(e.target.checked ? data.items.map(p=>p.id) : [])} /></th><Th icon={Hash} label="SL" className="w-[64px]" />
                       <Th icon={ImageIcon} label="Image" className="w-[92px]" />
                       <Th icon={Tag} label="Name" />
                       <Th icon={Boxes} label="Stock" />
@@ -393,6 +399,7 @@ export default function ProductsClient({
                             i % 2 === 1 ? "bg-[#fcfcfd] hover:bg-[#fff7f3]" : "hover:bg-[#fff7f3]"
                           }`}
                         >
+                          <td className="px-3 py-4"><input type="checkbox" checked={selected.includes(p.id)} onChange={e=>setSelected(s=>e.target.checked?[...s,p.id]:s.filter(id=>id!==p.id))} /></td>
                           {/* SL */}
                           <td className="px-3 py-4">
                             <span className="inline-grid place-items-center w-7 h-7 rounded-lg bg-[#fafafc] border border-gray-100 text-[11px] font-extrabold text-gray-500">

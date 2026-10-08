@@ -1,0 +1,4 @@
+"use client";
+import { useState, type ReactNode } from "react";
+const tabs=[['courier','Courier'],['fraud','Fraud Check'],['meta','Meta Pixel & CAPI'],['tags','Google Tags'],['other','Other APIs']];
+export default function ApiTabs({panels}:{panels:Record<string,ReactNode>}){const [active,setActive]=useState('courier');return <div><div className="sticky top-0 z-20 -mx-1 mb-4 flex gap-1 overflow-x-auto rounded-2xl bg-white/95 p-1.5 shadow-sm ring-1 ring-gray-100 backdrop-blur no-scrollbar">{tabs.map(([id,label])=><button key={id} onClick={()=>setActive(id)} className={`shrink-0 rounded-xl px-3.5 py-2.5 text-xs font-extrabold transition ${active===id?'grad-bg text-white shadow':'text-gray-500 hover:bg-gray-50'}`}>{label}</button>)}</div>{Object.entries(panels).map(([id,node])=><div key={id} className={active===id?'block':'hidden'}>{node}</div>)}</div>}

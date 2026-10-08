@@ -268,7 +268,7 @@ export default function SettingsClient({ initial }: { initial: Settings }) {
             <p className="text-[15px] text-[#1a0dab] font-semibold truncate">
               {v.metaTitle.trim() || `${v.siteName} — Best Online Shopping in Bangladesh`}
             </p>
-            <p className="text-[11.5px] text-emerald-700 font-bold">kmcmartbd.com</p>
+            <p className="text-[11.5px] text-emerald-700 font-bold">kmcbazar.com</p>
             <p className="text-[12px] text-gray-500 font-medium line-clamp-2 mt-0.5">
               {v.metaDescription.trim() || v.slogan}
             </p>

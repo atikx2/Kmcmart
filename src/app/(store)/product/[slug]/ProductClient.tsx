@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { metaEvent } from "@/lib/meta-events";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
@@ -38,6 +39,7 @@ export default function ProductClient({
 
   const pct = discountPercent(product.regularPrice, product.sellPrice);
   const price = effectivePrice(product.regularPrice, product.sellPrice);
+  useEffect(() => { metaEvent("ViewContent", { content_ids: [String(product.id)], content_name: product.name, content_type: "product", value: price, currency: "BDT" }); }, [product.id, price]);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 items-start">

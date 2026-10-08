@@ -8,7 +8,7 @@ import { ALL_PERMISSIONS } from "@/lib/permissions";
 
 export { hashPassword, verifyPassword };
 
-const SECRET = `${process.env.AUTH_SECRET || "kmcmartbd-dev-secret"}::admin`;
+const SECRET = `${process.env.AUTH_SECRET || "kmcbazarbd-dev-secret"}::admin`;
 const COOKIE_NAME = "kmc_admin_session";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 

@@ -15,6 +15,9 @@ import { listOrderStatuses } from "@/lib/admin-order-statuses";
 import CourierClient from "./CourierClient";
 import FraudClient from "./FraudClient";
 import TrackingClient from "./TrackingClient";
+import MetaCapiClient from "./MetaCapiClient";
+import ApiTabs from "./ApiTabs";
+import { listMetaPixels } from "@/lib/meta-capi";
 
 export const metadata: Metadata = { title: "API · Admin" };
 export const dynamic = "force-dynamic";
@@ -70,7 +73,7 @@ const SOON: Integration[] = [
 export default async function AdminApiPage() {
   await requirePermission("api");
 
-  const [{ row, ready }, statuses, summary, pendingParcels, fraud, fraudStats, tracking] = await Promise.all([
+  const [{ row, ready }, statuses, summary, pendingParcels, fraud, fraudStats, tracking, metaPixels] = await Promise.all([
     loadCourierConfig(),
     listOrderStatuses(),
     courierSummary(),
@@ -78,6 +81,7 @@ export default async function AdminApiPage() {
     loadFraudConfig(),
     fraudSummary(),
     listTrackingTags(),
+    listMetaPixels(),
   ]);
 
   return (
@@ -105,104 +109,14 @@ export default async function AdminApiPage() {
         </p>
       </div>
 
-      <CourierClient
-        initial={toPublicConfig(row)}
-        ready={ready}
-        statuses={statuses}
-        summary={summary}
-        authSecretSet={authSecretIsSet()}
-        cronSecretSet={Boolean(process.env.CRON_SECRET || process.env.AUTH_SECRET)}
-        pendingParcels={pendingParcels}
-      />
+      <ApiTabs panels={{
+        courier: <CourierClient initial={toPublicConfig(row)} ready={ready} statuses={statuses} summary={summary} authSecretSet={authSecretIsSet()} cronSecretSet={Boolean(process.env.CRON_SECRET || process.env.AUTH_SECRET)} pendingParcels={pendingParcels} />,
+        fraud: <FraudClient initial={toPublicFraudConfig(fraud.row)} ready={fraud.ready} summary={fraudStats} />,
+        meta: <MetaCapiClient initial={metaPixels} />,
+        tags: <TrackingClient initial={tracking.items} ready={tracking.ready} />,
+        other: <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">{SOON.map((it) => { const Icon = it.icon; return <section key={it.key} className="bg-white rounded-3xl border border-gray-100 p-5"><h3 className="font-display font-extrabold">{it.title}</h3><p className="text-xs text-gray-400 mt-1">{it.tagline}</p><span className="inline-block mt-3 text-[10px] font-extrabold bg-gray-100 text-gray-500 px-2 py-1 rounded-md">SOON</span></section>; })}</div>,
+      }} />
 
-      <FraudClient initial={toPublicFraudConfig(fraud.row)} ready={fraud.ready} summary={fraudStats} />
-
-      <TrackingClient initial={tracking.items} ready={tracking.ready} />
-
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-        {SOON.map((it) => {
-          const Icon = it.icon;
-          return (
-            <section
-              key={it.key}
-              className="bg-white rounded-3xl border border-gray-100 shadow-[0_4px_18px_rgba(17,18,28,0.05)] overflow-hidden flex flex-col"
-            >
-              <div className="flex items-center gap-3 px-4 md:px-5 py-4 border-b border-gray-100">
-                <span className="w-10 h-10 rounded-2xl grad-soft grid place-items-center text-[var(--g2)] shrink-0">
-                  <Icon size={17} strokeWidth={2.3} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-display font-extrabold text-[15px] truncate">{it.title}</h3>
-                  <p className="text-[10.5px] font-extrabold uppercase tracking-wider text-gray-400 mt-0.5">
-                    Not connected
-                  </p>
-                </div>
-                <span className="shrink-0 text-[9px] font-extrabold tracking-wider bg-gray-100 text-gray-500 px-2 py-1 rounded-md uppercase">
-                  Soon
-                </span>
-              </div>
-
-              <div className="p-4 md:p-5 space-y-4 flex-1">
-                <p className="text-[12.5px] font-semibold text-gray-500 leading-relaxed">{it.tagline}</p>
-
-                <div className="flex flex-wrap gap-1.5">
-                  {it.providers.map((p) => (
-                    <span
-                      key={p}
-                      className="text-[10.5px] font-extrabold text-gray-500 bg-[#fafafc] border border-gray-100 rounded-lg px-2 py-1"
-                    >
-                      {p}
-                    </span>
-                  ))}
-                </div>
-
-                <ul className="space-y-1.5">
-                  {it.willDo.map((w) => (
-                    <li key={w} className="flex items-start gap-2 text-[12px] font-semibold text-gray-600">
-                      <CheckCircle2 size={13} className="text-emerald-500 shrink-0 mt-[2px]" />
-                      <span className="min-w-0">{w}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <div className="space-y-2.5 pt-1">
-                  {it.fields.map((f) => {
-                    const FIcon = f.icon;
-                    return (
-                      <label key={f.label} className="block opacity-60">
-                        <span className="block text-[10.5px] font-extrabold uppercase tracking-wider text-gray-400 mb-1.5">
-                          {f.label}
-                        </span>
-                        <span className="relative block">
-                          <FIcon
-                            size={15}
-                            strokeWidth={2.3}
-                            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-                          />
-                          <input
-                            disabled
-                            placeholder={f.placeholder}
-                            className="w-full rounded-xl border-[1.5px] border-gray-200 bg-[#f7f7fa] pl-10 pr-3.5 py-2.5 text-[12.5px] font-bold text-gray-500 cursor-not-allowed"
-                          />
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="px-4 md:px-5 py-4 border-t border-gray-100">
-                <button
-                  disabled
-                  className="w-full rounded-2xl py-3 text-[12.5px] font-extrabold text-gray-400 bg-gray-100 cursor-not-allowed"
-                >
-                  Save &amp; connect — waiting for docs
-                </button>
-              </div>
-            </section>
-          );
-        })}
-      </div>
     </div>
   );
 }

@@ -164,7 +164,7 @@ export default function TrackingClient({
         {/* ---- current tags ---- */}
         {items.length > 0 && (
           <div className="space-y-2">
-            {items.map((t) => (
+            {items.filter((t) => t.provider !== "meta").map((t) => (
               <div
                 key={t.id}
                 className="flex items-center gap-3 rounded-2xl border border-gray-100 px-3.5 py-3 hover:bg-[#fff7f3] transition"
@@ -219,7 +219,7 @@ export default function TrackingClient({
           <p className="font-display font-extrabold text-[13px]">Add a tag</p>
 
           <div className="flex flex-wrap gap-1.5">
-            {TRACKING_PROVIDERS.map((p) => (
+            {TRACKING_PROVIDERS.filter((p) => p.key !== "meta").map((p) => (
               <button
                 key={p.key}
                 type="button"

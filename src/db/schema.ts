@@ -19,14 +19,14 @@ export type OrderItem = {
 
 export const settings = pgTable("settings", {
   id: serial("id").primaryKey(),
-  siteName: text("site_name").notNull().default("Kmcmartbd"),
+  siteName: text("site_name").notNull().default("KmcBazar"),
   logoHeader: text("logo_header").notNull().default("/assets/logo-header.svg"),
   logoFooter: text("logo_footer").notNull().default("/assets/logo-footer.svg"),
   slogan: text("slogan")
     .notNull()
     .default("Smart shopping, happy living — everything you need at your door."),
   phone: text("phone").notNull().default("+880 1700-112233"),
-  email: text("email").notNull().default("support@kmcmartbd.com"),
+  email: text("email").notNull().default("support@kmcbazar.com"),
   address: text("address").notNull().default("Dhaka, Bangladesh"),
   facebook: text("facebook").notNull().default("#"),
   instagram: text("instagram").notNull().default("#"),
@@ -232,6 +232,20 @@ export const trackingTags = pgTable("tracking_tags", {
 
 export type TrackingTag = typeof trackingTags.$inferSelect;
 
+export const metaPixels = pgTable("meta_pixels", {
+  id: serial("id").primaryKey(),
+  label: text("label").notNull().default(""),
+  pixelId: text("pixel_id").notNull().unique(),
+  accessToken: text("access_token").notNull().default(""),
+  testEventCode: text("test_event_code").notNull().default(""),
+  isActive: boolean("is_active").notNull().default(true),
+  events: jsonb("events").$type<string[]>().notNull().default(["PageView", "ViewContent", "AddToCart", "InitiateCheckout", "Purchase"]),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type MetaPixel = typeof metaPixels.$inferSelect;
+
 export const admins = pgTable("admins", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().default(""),
@@ -252,6 +266,7 @@ export const customers = pgTable("customers", {
   name: text("name").notNull(),
   phone: text("phone").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
+  address: text("address").notNull().default(""),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
