@@ -1,6 +1,8 @@
 import Script from "next/script";
 import type { TrackingTagPublic } from "@/lib/tracking";
 
+type MetaPixelPublic = { pixelId: string; isActive: boolean };
+
 /**
  * Renders the marketing tags the owner added on the API page.
  *
@@ -13,7 +15,7 @@ import type { TrackingTagPublic } from "@/lib/tracking";
  *    is injected as code, so a stolen admin password cannot put arbitrary
  *    JavaScript on the storefront.
  */
-export default function TrackingScripts({ tags }: { tags: TrackingTagPublic[] }) {
+export default function TrackingScripts({ tags, metaPixels = [] }: { tags: TrackingTagPublic[]; metaPixels?: MetaPixelPublic[] }) {
   if (tags.length === 0) return null;
 
   const ids = (provider: string) =>
@@ -21,7 +23,7 @@ export default function TrackingScripts({ tags }: { tags: TrackingTagPublic[] })
 
   const gtm = ids("gtm");
   const gtag = [...ids("ga4"), ...ids("gads")];
-  const meta = ids("meta");
+  const meta = [...ids("meta"), ...metaPixels.filter((p) => p.isActive).map((p) => p.pixelId)].filter((id, i, all) => all.indexOf(id) === i);
 
   return (
     <>

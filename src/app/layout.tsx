@@ -6,6 +6,7 @@ import { isLang } from "@/lib/i18n";
 import { getActiveTrackingTags } from "@/lib/admin-tracking";
 import TrackingScripts, { TrackingNoScript, verificationTokens } from "@/components/site/TrackingScripts";
 import NavigationLoader from "@/components/site/NavigationLoader";
+import { listMetaPixels } from "@/lib/meta-capi";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +52,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const [settings, tags] = await Promise.all([getSettings(), getActiveTrackingTags()]);
+  const [settings, tags, metaPixels] = await Promise.all([getSettings(), getActiveTrackingTags(), listMetaPixels()]);
 
   return (
     <html
@@ -63,7 +64,7 @@ export default async function RootLayout({
         <style>{`:root{--g1:${settings.colorFrom};--g2:${settings.colorTo};}`}</style>
         {children}
         <NavigationLoader />
-        <TrackingScripts tags={tags} />
+        <TrackingScripts tags={tags} metaPixels={metaPixels} />
       </body>
     </html>
   );
